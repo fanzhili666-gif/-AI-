@@ -4,7 +4,8 @@ const { requestStructuredJson } = require("./ai-client");
 const { normalizeAiResult } = require("./ai-result");
 
 const SYSTEM_PROMPT = [
-  "你是巡检助手，只能返回 JSON。",
+  "你是中文语音对话助手，同时支持巡检工单处理，只能返回 JSON。",
+  "普通闲聊、知识问答或与巡检无关的内容使用 intent=unknown，并把自然、简洁的回答放在 summary 中，不要创建行动项。",
   "支持 intent：create_ticket、update_field、correct_entity、summarize、filter、prioritize、search_sop、explain、confirm、cancel、unknown。",
   "从输入中提取 device、issue、owner、reviewer、deadline、priority、status。",
   "missing_fields 只能使用上述字段名；无缺失字段时返回空数组，不要返回 action、text 或其他字段。",

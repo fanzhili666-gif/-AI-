@@ -15,7 +15,8 @@ const messages = buildConversationMessages({
   text: "截止时间改成明天上午",
 });
 assert.equal(messages[0].role, "system");
-assert.match(SYSTEM_PROMPT, /JSON/);
+assert.match(SYSTEM_PROMPT, /语音对话助手/);
+assert.match(SYSTEM_PROMPT, /intent=unknown/);
 assert.equal(messages[1].content, "三号泵压力偏高");
 assert.equal(messages[3].content, "截止时间改成明天上午");
 

@@ -62,7 +62,7 @@ function start() {
     highlighted: false,
     projection: ["device", "issue", "owner", "reviewer", "deadline", "priority", "status"],
     aruiVersion: 0,
-    response: "输入会议安排，应用会自动提取行动项",
+    response: "请说话或输入文字，我可以和你聊天，也可以整理巡检工单",
   };
   const conversation = {
     sessionId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -375,6 +375,17 @@ function start() {
     } else {
       viewModel.response = result.summary || "AI 已完成处理";
       viewModel.state = result.needs_confirmation ? "待确认" : "完成";
+      if (result.intent === "unknown") {
+        console.log(JSON.stringify({
+          event: "ai.chat.responded",
+          request_id: requestId,
+          session_id: conversation.sessionId,
+          response: viewModel.response,
+          ts: new Date().toISOString(),
+          data_source: "real",
+          is_injected: false,
+        }));
+      }
       render();
     }
     console.log(JSON.stringify({
@@ -410,6 +421,23 @@ function start() {
             request_id: requestId,
             session_id: conversation.sessionId,
             reason: "stale_fallback",
+            ts: new Date().toISOString(),
+            data_source: "real",
+            is_injected: false,
+          }));
+          return;
+        }
+        const isRuleRequest = isSummaryRequest(normalized) ||
+          parseDeadlineUpdate(normalized) ||
+          parseRuleActionItems(normalized).length ||
+          parseIntent(normalized).intent === "correct_entity";
+        if (!isRuleRequest && parseIntent(normalized).intent === "unknown") {
+          updateResponse(`AI 暂时不可用：${error.message}`, "异常");
+          console.log(JSON.stringify({
+            event: "ai.chat.failed",
+            request_id: requestId,
+            session_id: conversation.sessionId,
+            reason: error.message,
             ts: new Date().toISOString(),
             data_source: "real",
             is_injected: false,
