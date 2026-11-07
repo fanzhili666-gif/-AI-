@@ -4,6 +4,7 @@ const LABELS = Object.freeze({
   device: "设备",
   issue: "现象",
   owner: "负责人",
+  reviewer: "审核人",
   deadline: "截止时间",
   priority: "优先级",
   status: "状态",

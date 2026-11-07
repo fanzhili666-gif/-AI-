@@ -14,7 +14,7 @@ const INTENTS = Object.freeze([
   "unknown",
 ]);
 
-const FIELDS = Object.freeze(["device", "issue", "owner", "deadline", "priority", "status"]);
+const FIELDS = Object.freeze(["device", "issue", "owner", "reviewer", "deadline", "priority", "status"]);
 const PROCESSORS = Object.freeze(["ai", "rule"]);
 
 function isPlainObject(value) {
@@ -39,7 +39,7 @@ function validateAiResult(value) {
   if (value.filter !== undefined && value.filter !== null) {
     if (!isPlainObject(value.filter)) throw new Error("AI filter 必须是对象或 null");
     for (const key of Object.keys(value.filter)) {
-      if (!["owner", "priority", "status"].includes(key)) {
+      if (!["owner", "reviewer", "priority", "status"].includes(key)) {
         throw new Error(`AI filter 包含非法字段：${key}`);
       }
       if (typeof value.filter[key] !== "string") {

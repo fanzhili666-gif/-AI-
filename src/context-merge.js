@@ -1,6 +1,6 @@
 "use strict";
 
-const FIELDS = Object.freeze(["device", "issue", "owner", "deadline", "priority", "status"]);
+const FIELDS = Object.freeze(["device", "issue", "owner", "reviewer", "deadline", "priority", "status"]);
 
 function assertContext(context) {
   if (!context || typeof context !== "object" || Array.isArray(context)) {

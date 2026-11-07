@@ -13,13 +13,15 @@ function parseRuleActionItems(text) {
     /((?:三|四|五|六|七|八|九|十|\d+)号泵)([^，。；;]*?)(?:，|,|\s|$).*?安排([\u4e00-\u9fff]{2})(今天|明天|后天|本周)?(?:上午|下午)?(?:去|进行|负责)?([^，。；;]*?)(?:一下)?(?:，|,|。|；|;|$)/,
   );
   if (voiceMatch) {
-    const latest = raw.match(/(?:最晚(?:时间)?不超过|截止时间(?:改成|修改为|调整为|变更为))\s*(今天|明天|后天|本周)(上午|下午)?/);
+    const latest = raw.match(/(?:最晚(?:时间)?(?:不超过)?|截止时间(?:改成|修改为|调整为|变更为))\s*(今天|明天|后天|本周)(上午|下午)?/);
     const reassigned = raw.match(/负责人(?:交给|改成|调整为|变更为)\s*([\u4e00-\u9fff]{2,3})/);
+    const reviewer = raw.match(/审核人(?:交给|改成|调整为|变更为)\s*([\u4e00-\u9fff]{2,3})/);
     return [{
       device: voiceMatch[1],
       issue: `${voiceMatch[1]}${voiceMatch[2]}`.trim(),
       action: voiceMatch[5].replace(/^(?:去|进行|负责)/, "").trim() || "复查",
       owner: reassigned ? reassigned[1] : voiceMatch[3],
+      reviewer: reviewer ? reviewer[1] : "待提取",
       deadline: latest ? `${latest[1]}${latest[2] || ""}` : (voiceMatch[4] || "待提取"),
       status: "待确认",
       data_source: "real",

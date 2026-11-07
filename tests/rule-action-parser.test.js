@@ -32,5 +32,11 @@ assert.equal(voiceItem[0].device, "3号泵");
 assert.equal(voiceItem[0].owner, "王强");
 assert.equal(voiceItem[0].deadline, "后天下午");
 assert.equal(voiceItem[0].action, "复查");
+assert.equal(voiceItem[0].reviewer, "待提取");
+const reviewerItem = parseRuleActionItems(
+  "9号泵压力有些大，安排王强明天去复查一下。审核人交给李娜，最晚后天下午要给我结果。",
+)[0];
+assert.equal(reviewerItem.reviewer, "李娜");
+assert.equal(reviewerItem.deadline, "后天下午");
 
 console.log("rule-action-parser: 3 cases passed");
