@@ -6,6 +6,11 @@ const { analyzeConversation } = require("./ai-agent");
 const { parseIntent } = require("./intent-parser");
 const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
+const { adaptAiResult } = require("./domain-adapter");
+const {
+  createDomainSession,
+  dispatchDomainCommand,
+} = require("./domain-orchestrator");
 const { App, AppLifecycle, Window, WindowProperty } = require("@irisview/osx/os");
 const {
   getVoiceInputAvailability,
@@ -52,6 +57,7 @@ function start() {
     history: [],
     entity: {},
   };
+  conversation.domainSession = createDomainSession(conversation.sessionId);
   const handleVoiceText = (text, final) => {
     if (!text) return;
     viewModel.response = `语音转写${final ? "完成" : "中"}：${text}`;
@@ -119,6 +125,34 @@ function start() {
         event: "ai.obsolete",
         request_id: requestId,
         session_id: conversation.sessionId,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
+      return;
+    }
+    const command = adaptAiResult({
+      result,
+      sessionId: conversation.sessionId,
+      requestId,
+      baseVersion: conversation.domainSession.version,
+    });
+    const domainResult = dispatchDomainCommand({
+      command,
+      session: conversation.domainSession,
+      apply: (received) => ({
+        status: received.needsConfirmation ? "pending_confirmation" : "applied",
+        state: received.needsConfirmation ? "待确认" : "处理中",
+        message: received.summary,
+      }),
+    });
+    if (domainResult.status === "obsolete") {
+      console.log(JSON.stringify({
+        event: "ai.obsolete",
+        request_id: requestId,
+        session_id: conversation.sessionId,
+        reason: domainResult.reason,
+        domain_version: domainResult.version,
         ts: new Date().toISOString(),
         data_source: "real",
         is_injected: false,
@@ -205,6 +239,7 @@ function start() {
       intent: result.intent,
       entities: result.entities,
       processor: result.processor,
+      domain_version: domainResult.version,
       state: viewModel.state,
       arui_version: viewModel.aruiVersion,
       ts: new Date().toISOString(),
