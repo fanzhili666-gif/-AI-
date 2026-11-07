@@ -16,6 +16,7 @@ assert.equal(items[0].owner, "李娜");
 assert.equal(items[0].deadline, "今天");
 
 assert.equal(parseDeadlineUpdate("截止时间改成明天上午"), "明天上午");
+assert.equal(parseRuleActionItems("3号泵压力偏高，安排李娜明天复查，最晚不超过后天下午")[0].deadline, "后天下午");
 assert.equal(parseDeadlineUpdate("没有截止时间"), null);
 const combinedText = "三号泵压力偏高\n安排李娜今天复查\n截止时间改成明天上午";
 const combinedItems = parseRuleActionItems(combinedText);
