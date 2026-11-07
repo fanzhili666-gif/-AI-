@@ -1,6 +1,7 @@
 "use strict";
 
 const { applicationDataDirectory } = require("./application-data");
+const { parseIntent } = require("./intent-parser");
 const { App, AppLifecycle, Window, WindowProperty } = require("@irisview/osx/os");
 const {
   getVoiceInputAvailability,
@@ -87,11 +88,21 @@ function start() {
     viewModel.source = "real";
     viewModel.isInjected = false;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const parsedIntent = parseIntent(normalized);
     console.log(JSON.stringify({
       event: "input.received",
       request_id: requestId,
       source: "text",
       text: normalized,
+      ts: new Date().toISOString(),
+      data_source: "real",
+      is_injected: false,
+    }));
+    console.log(JSON.stringify({
+      event: "intent.parsed",
+      request_id: requestId,
+      intent: parsedIntent.intent,
+      slots: parsedIntent.slots,
       ts: new Date().toISOString(),
       data_source: "real",
       is_injected: false,
