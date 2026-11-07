@@ -402,6 +402,18 @@ function start() {
       .then((result) => applyAiResult(result, normalized, requestId))
       .catch((error) => {
         console.error("IrisView AI processing failed", error);
+        if (requestId !== conversation.latestRequestId) {
+          console.log(JSON.stringify({
+            event: "ai.obsolete",
+            request_id: requestId,
+            session_id: conversation.sessionId,
+            reason: "stale_fallback",
+            ts: new Date().toISOString(),
+            data_source: "real",
+            is_injected: false,
+          }));
+          return;
+        }
         updateResponse(`AI 不可用，已切换规则模式：${error.message}`, "处理中");
         try {
           handleRuleText(normalized, source, requestId);
@@ -464,7 +476,13 @@ function start() {
       }));
       return;
     }
-    if (!["待命", "待确认", "异常", "完成"].includes(normalized) &&
+    const hasDeterministicRule = Boolean(
+      isSummaryRequest(normalized) ||
+      parseDeadlineUpdate(normalized) ||
+      parseRuleActionItems(normalized).length,
+    );
+    if (!hasDeterministicRule &&
+        !["待命", "待确认", "异常", "完成"].includes(normalized) &&
         !normalized.startsWith("只保留") &&
         tryAi(normalized, source, requestId)) {
       return;
