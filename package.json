@@ -1,7 +1,7 @@
 {
   "dependencies": {},
   "scripts": {
-    "test": "node tests/intent-parser.test.js && node tests/ai-client.test.js && node tests/ai-result.test.js && node tests/ai-agent.test.js && node tests/sop-search.test.js && node tests/view-projection.test.js && node tests/domain-adapter.test.js"
+    "test": "node tests/intent-parser.test.js && node tests/ai-client.test.js && node tests/ai-result.test.js && node tests/ai-agent.test.js && node tests/sop-search.test.js && node tests/view-projection.test.js && node tests/domain-adapter.test.js && node tests/domain-orchestrator.test.js"
   },
   "engines": {
     "node": "24.13.0",
