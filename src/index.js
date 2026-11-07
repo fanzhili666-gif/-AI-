@@ -6,6 +6,7 @@ const { analyzeConversation } = require("./ai-agent");
 const { parseIntent } = require("./intent-parser");
 const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
+const { mergeContext } = require("./context-merge");
 const { adaptAiResult } = require("./domain-adapter");
 const {
   createDomainSession,
@@ -56,6 +57,8 @@ function start() {
     sessionId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     history: [],
     entity: {},
+    context: { entities: {}, metadata: {} },
+    changes: [],
   };
   conversation.domainSession = createDomainSession(conversation.sessionId);
   const handleVoiceText = (text, final) => {
@@ -159,7 +162,15 @@ function start() {
       }));
       return;
     }
-    conversation.entity = { ...conversation.entity, ...result.entities };
+    const merged = mergeContext({
+      context: conversation.context,
+      patch: result.entities,
+      source: result.processor || "ai",
+      updatedAt: new Date().toISOString(),
+    });
+    conversation.context = merged.context;
+    conversation.entity = conversation.context.entities;
+    conversation.changes.push(...merged.changes);
     viewModel.projection = result.view.projection;
     conversation.history.push({ role: "user", text: normalized, request_id: requestId });
     conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
@@ -239,6 +250,7 @@ function start() {
       intent: result.intent,
       entities: result.entities,
       processor: result.processor,
+      context_changes: merged.changes,
       domain_version: domainResult.version,
       state: viewModel.state,
       arui_version: viewModel.aruiVersion,
