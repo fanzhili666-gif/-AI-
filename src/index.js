@@ -8,6 +8,11 @@ const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
 const { mergeContext } = require("./context-merge");
 const { resolveTarget } = require("./ambiguity-resolver");
+const {
+  proposeChange,
+  confirmChange,
+  cancelChange,
+} = require("./confirmation-core");
 const { adaptAiResult } = require("./domain-adapter");
 const {
   createDomainSession,
@@ -123,6 +128,43 @@ function start() {
     bumpAruiVersion();
     render();
   };
+  const applyConfirmedResult = (pending) => {
+    const { result, normalized, requestId } = pending;
+    const merged = mergeContext({
+      context: conversation.context,
+      patch: result.entities,
+      source: result.processor || "ai",
+      updatedAt: new Date().toISOString(),
+    });
+    conversation.context = merged.context;
+    conversation.entity = conversation.context.entities;
+    conversation.changes.push(...merged.changes);
+    conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+    conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
+    const entity = conversation.entity;
+    const item = {
+      device: entity.device || "待提取",
+      issue: entity.issue || "待提取",
+      action: entity.issue || result.summary || normalized,
+      owner: entity.owner || "待提取",
+      deadline: entity.deadline || "待提取",
+      priority: entity.priority || "待提取",
+      status: "处理中",
+      data_source: "real",
+      is_injected: false,
+    };
+    updateItems(
+      [item],
+      result.summary || "已确认并更新行动项",
+      "完成",
+    );
+    return {
+      status: "applied",
+      state: "完成",
+      message: result.summary || "已确认并更新行动项",
+      items: [item],
+    };
+  };
   const applyAiResult = (result, normalized, requestId) => {
     if (requestId !== conversation.latestRequestId) {
       console.log(JSON.stringify({
@@ -163,6 +205,40 @@ function start() {
         }));
         return;
       }
+    }
+    if (command.needsConfirmation &&
+        ["CreateActionItem", "UpdateActionItem", "CorrectEntity"].includes(command.type)) {
+      const changeId = `change-${requestId}`;
+      const proposal = proposeChange({
+        session: conversation.domainSession,
+        changeId,
+        command,
+        diff: { fields: result.entities },
+        message: result.summary || "检测到行动项变更，请确认后执行",
+      });
+      if (proposal.status !== "pending_confirmation") {
+        viewModel.state = "异常";
+        viewModel.response = proposal.message;
+      } else {
+        conversation.domainSession.pendingChange.result = result;
+        conversation.domainSession.pendingChange.normalized = normalized;
+        conversation.domainSession.pendingChange.requestId = requestId;
+        viewModel.state = "待确认";
+        viewModel.response = proposal.message;
+      }
+      bumpAruiVersion();
+      render();
+      console.log(JSON.stringify({
+        event: "ai.pending_confirmation",
+        request_id: requestId,
+        session_id: conversation.sessionId,
+        change_id: changeId,
+        domain_version: proposal.version,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
+      return;
     }
     const domainResult = dispatchDomainCommand({
       command,
@@ -320,6 +396,37 @@ function start() {
       data_source: "real",
       is_injected: false,
     }));
+    if (/^(?:确认|执行|好的|取消|撤销)/.test(normalized)) {
+      const pending = conversation.domainSession.pendingChange;
+      const decision = /^(?:取消|撤销)/.test(normalized) ? "cancel" : "confirm";
+      const result = decision === "confirm"
+        ? confirmChange({
+          session: conversation.domainSession,
+          changeId: pending?.id || "",
+          apply: applyConfirmedResult,
+        })
+        : cancelChange({
+          session: conversation.domainSession,
+          changeId: pending?.id || "",
+        });
+      viewModel.state = result.state || (result.status === "obsolete" ? "异常" : "完成");
+      viewModel.response = result.message;
+      bumpAruiVersion();
+      render();
+      console.log(JSON.stringify({
+        event: "confirmation.processed",
+        request_id: requestId,
+        session_id: conversation.sessionId,
+        decision,
+        status: result.status,
+        reason: result.reason,
+        domain_version: result.version,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
+      return;
+    }
     if (!["待命", "待确认", "异常", "完成"].includes(normalized) &&
         !normalized.startsWith("只保留") &&
         tryAi(normalized, source, requestId)) {
