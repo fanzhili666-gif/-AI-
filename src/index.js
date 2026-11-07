@@ -283,13 +283,14 @@ function readVoiceEvents(updateResponse) {
     }
   }
 
-  function scheduleVoiceRestart(updateResponse) {
-    if (!retained.inputTimer || retained.voiceRestartTimer) return;
-    retained.voiceRestartTimer = setTimeout(() => {
-      retained.voiceRestartTimer = undefined;
-      if (retained.inputTimer && !retained.voiceSession) startVoiceInput(updateResponse);
-    }, 500);
-  }
+}
+
+function scheduleVoiceRestart(updateResponse) {
+  if (!retained.inputTimer || retained.voiceRestartTimer) return;
+  retained.voiceRestartTimer = setTimeout(() => {
+    retained.voiceRestartTimer = undefined;
+    if (retained.inputTimer && !retained.voiceSession) startVoiceInput(updateResponse);
+  }, 500);
 }
 
 App.createApp((lifecycle) => {
