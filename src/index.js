@@ -74,13 +74,54 @@ function start() {
     entity: {},
     context: { entities: {}, metadata: {} },
     changes: [],
+    transcript: [],
   };
   conversation.domainSession = createDomainSession(conversation.sessionId);
+  const appendTranscript = (role, text, requestId) => {
+    conversation.transcript.push({ role, text, requestId });
+    conversation.transcript = conversation.transcript.slice(-12);
+  };
+  const renderTranscript = () => conversation.transcript.length
+    ? conversation.transcript.map((entry) =>
+      `${entry.role === "user" ? "你" : "AI"}：${entry.text}`,
+    ).join("\n\n")
+    : "暂无对话记录";
+  const animateAssistantResponse = (requestId, text) => {
+    if (retained.typingTimer) clearInterval(retained.typingTimer);
+    const entry = conversation.transcript.findLast((item) =>
+      item.role === "assistant" && item.requestId === requestId);
+    if (!entry) return;
+    entry.text = "";
+    let offset = 0;
+    retained.typingTimer = setInterval(() => {
+      if (requestId !== conversation.latestRequestId || offset >= text.length) {
+        clearInterval(retained.typingTimer);
+        retained.typingTimer = undefined;
+        if (requestId === conversation.latestRequestId) {
+          entry.text = text;
+          render();
+        }
+        return;
+      }
+      entry.text += text[offset];
+      offset += 1;
+      viewModel.response = entry.text;
+      render();
+    }, 45);
+  };
   const processDailyInput = (normalized, source, requestId) => {
     viewModel.source = source;
     viewModel.state = "处理中";
     viewModel.response = "正在理解你的请求";
     conversation.latestRequestId = requestId;
+    if (retained.typingTimer) {
+      clearInterval(retained.typingTimer);
+      retained.typingTimer = undefined;
+      const previous = conversation.transcript.findLast((item) => item.role === "assistant");
+      if (previous && previous.text === "AI 正在思考…") previous.text = "上一条请求未完成";
+    }
+    appendTranscript("user", normalized, requestId);
+    appendTranscript("assistant", "AI 正在思考…", requestId);
     render();
     console.log(JSON.stringify({
       event: "daily_agent.requested",
@@ -102,9 +143,10 @@ function start() {
       viewModel.items = [];
       viewModel.visibleItems = [];
       viewModel.state = "完成";
-      viewModel.response = result.response;
+      viewModel.response = "";
       bumpAruiVersion();
       render();
+      animateAssistantResponse(requestId, result.response);
       console.log(JSON.stringify({
         event: result.processor === "ai" ? "daily_agent.responded" : "daily_agent.executed",
         request_id: requestId,
@@ -125,6 +167,9 @@ function start() {
         is_injected: false,
       }));
       if (requestId === conversation.latestRequestId) {
+        const assistantEntry = conversation.transcript.findLast((item) =>
+          item.role === "assistant" && item.requestId === requestId);
+        if (assistantEntry) assistantEntry.text = `处理失败：${error.message}`;
         updateResponse(`日常智能体暂时不可用：${error.message}`, "异常");
       }
     });
@@ -172,6 +217,7 @@ function start() {
       `${renderStateLabels()}\n\n` +
       `当前状态：${viewModel.state}\n\n` +
       `回复\n${viewModel.response}\n\n` +
+      `对话记录\n${renderTranscript()}\n\n` +
       `语音输入已开启 · 可直接说话`,
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
@@ -826,10 +872,12 @@ App.createApp((lifecycle) => {
   if (lifecycle === AppLifecycle.ON_CREATE) start();
   if (lifecycle === AppLifecycle.ON_DESTROY) {
     if (retained.inputTimer) clearInterval(retained.inputTimer);
+    if (retained.typingTimer) clearInterval(retained.typingTimer);
     if (retained.voiceRestartTimer) clearTimeout(retained.voiceRestartTimer);
     if (retained.voiceSession) retained.voiceSession.cancel();
     if (retained.asr) retained.asr.close();
     retained.inputTimer = undefined;
+    retained.typingTimer = undefined;
     retained.voiceSession = undefined;
     retained.asr = undefined;
     retained.voiceTextHandler = undefined;
