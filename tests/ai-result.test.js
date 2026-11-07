@@ -14,6 +14,13 @@ const result = normalizeAiResult({
 assert.equal(result.processor, "ai");
 assert.deepEqual(result.view.projection, ["device", "issue"]);
 assert.equal(result.needs_confirmation, true);
+assert.equal(
+  normalizeAiResult({
+    intent: "correct_entity",
+    entities: { owner: "李娜" },
+  }).intent,
+  "correct_entity",
+);
 
 assert.deepEqual(
   normalizeAiResult({

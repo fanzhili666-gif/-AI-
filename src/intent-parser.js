@@ -10,6 +10,16 @@ const INTENTS = Object.freeze({
   UNKNOWN: "unknown",
 });
 
+const FIELD_LABELS = Object.freeze({
+  设备: "device",
+  现象: "issue",
+  问题: "issue",
+  负责人: "owner",
+  截止时间: "deadline",
+  优先级: "priority",
+  状态: "status",
+});
+
 function parseIntent(input) {
   const text = String(input || "").trim();
   if (!text) return { intent: INTENTS.UNKNOWN, text, slots: {} };
@@ -30,6 +40,21 @@ function parseIntent(input) {
       intent: INTENTS.PRIORITIZE,
       text,
       slots: { reference: reference ? reference[1] : null, highlight: text.includes("高亮") },
+    };
+  }
+
+  const labeledCorrectionMatch = text.match(
+    /^(设备|现象|问题|负责人|截止时间|优先级|状态)不是(.+?)(?:是|应为|改为)(.+)$/,
+  );
+  if (labeledCorrectionMatch) {
+    return {
+      intent: INTENTS.CORRECT_ENTITY,
+      text,
+      slots: {
+        field: FIELD_LABELS[labeledCorrectionMatch[1]],
+        from: labeledCorrectionMatch[2].replace(/[，,、。；;]\s*$/, "").trim(),
+        to: labeledCorrectionMatch[3].replace(/[，,、。；;]\s*$/, "").trim(),
+      },
     };
   }
 

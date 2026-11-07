@@ -3,6 +3,7 @@
 const INTENTS = Object.freeze([
   "create_ticket",
   "update_field",
+  "correct_entity",
   "summarize",
   "filter",
   "prioritize",

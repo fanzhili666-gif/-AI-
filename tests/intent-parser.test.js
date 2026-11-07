@@ -8,6 +8,11 @@ const cases = [
   ["只保留负责人和截止时间", INTENTS.FILTER_FIELDS, { fields: ["负责人", "截止时间"] }],
   ["待确认置顶并高亮", INTENTS.PRIORITIZE, { reference: null, highlight: true }],
   ["不是张伟是张薇", INTENTS.CORRECT_ENTITY, { from: "张伟", to: "张薇" }],
+  ["负责人不是李伟，是李娜", INTENTS.CORRECT_ENTITY, {
+    field: "owner",
+    from: "李伟",
+    to: "李娜",
+  }],
   ["第二个行动项置顶", INTENTS.PRIORITIZE, { reference: "二", highlight: false }],
   ["第二个行动项", INTENTS.RESOLVE_REFERENCE, { ordinal: "二" }],
   ["确认执行", INTENTS.CONFIRMATION, { decision: "confirm" }],

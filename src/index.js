@@ -148,7 +148,7 @@ function start() {
       viewModel.response = result.summary || "已将重点行动项置顶";
       bumpAruiVersion();
       render();
-    } else if (["create_ticket", "update_field"].includes(result.intent)) {
+    } else if (["create_ticket", "update_field", "correct_entity"].includes(result.intent)) {
       const entity = conversation.entity;
       const item = {
         device: entity.device || "待提取",
@@ -161,7 +161,11 @@ function start() {
         data_source: "real",
         is_injected: false,
       };
-      updateItems([item], result.summary || "AI 已更新行动项", result.needs_confirmation ? "待确认" : "完成");
+      updateItems(
+        [item],
+        result.summary || (result.intent === "correct_entity" ? "已更正行动项字段" : "AI 已更新行动项"),
+        result.needs_confirmation ? "待确认" : "完成",
+      );
     } else if (result.intent === "summarize" || result.intent === "explain") {
       viewModel.response = result.summary || "当前会话暂无摘要";
       viewModel.state = result.needs_confirmation ? "待确认" : "完成";
@@ -263,7 +267,31 @@ function start() {
       data_source: "real",
       is_injected: false,
     }));
-    if (normalized === "待命") {
+    if (parsedIntent.intent === "correct_entity") {
+      const { field, from, to } = parsedIntent.slots;
+      const currentValue = field ? conversation.entity[field] : undefined;
+      const resolvedField = field || Object.keys(conversation.entity)
+        .find((key) => conversation.entity[key] === from);
+      if (!resolvedField || (currentValue && currentValue !== from)) {
+        viewModel.state = "异常";
+        viewModel.response = "无法确定要更正的字段，请说明字段名称";
+      } else {
+        conversation.entity[resolvedField] = to;
+        const entity = conversation.entity;
+        const item = {
+          device: entity.device || "待提取",
+          issue: entity.issue || "待提取",
+          action: entity.issue || normalized,
+          owner: entity.owner || "待提取",
+          deadline: entity.deadline || "待提取",
+          priority: entity.priority || "待提取",
+          status: "处理中",
+          data_source: "real",
+          is_injected: false,
+        };
+        updateItems([item], `已将${from}更正为${to}`, "完成");
+      }
+    } else if (normalized === "待命") {
       viewModel.state = "待命";
       viewModel.response = "等待下一条输入";
       viewModel.highlighted = false;
