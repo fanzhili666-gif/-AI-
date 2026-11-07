@@ -133,6 +133,17 @@ function start() {
     bumpAruiVersion();
     render();
   };
+  const buildActionItem = (entities, summary, status = "处理中") => ({
+    device: entities.device || "待提取",
+    issue: entities.issue || "待提取",
+    action: entities.issue || summary || "待提取",
+    owner: entities.owner || "待提取",
+    deadline: entities.deadline || "待提取",
+    priority: entities.priority || "待提取",
+    status,
+    data_source: "real",
+    is_injected: false,
+  });
   const applyConfirmedResult = (pending) => {
     const { result, normalized, requestId } = pending;
     const merged = mergeContext({
@@ -144,20 +155,8 @@ function start() {
     conversation.context = merged.context;
     conversation.entity = conversation.context.entities;
     conversation.changes.push(...merged.changes);
-    conversation.history.push({ role: "user", text: normalized, request_id: requestId });
-    conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
     const entity = conversation.entity;
-    const item = {
-      device: entity.device || "待提取",
-      issue: entity.issue || "待提取",
-      action: entity.issue || result.summary || normalized,
-      owner: entity.owner || "待提取",
-      deadline: entity.deadline || "待提取",
-      priority: entity.priority || "待提取",
-      status: "处理中",
-      data_source: "real",
-      is_injected: false,
-    };
+    const item = buildActionItem(entity, result.summary || normalized);
     updateItems(
       [item],
       result.summary || "已确认并更新行动项",
@@ -214,6 +213,36 @@ function start() {
     if (command.needsConfirmation &&
         ["CreateActionItem", "UpdateActionItem", "CorrectEntity"].includes(command.type)) {
       const changeId = `change-${requestId}`;
+      const pending = conversation.domainSession.pendingChange;
+      if (pending) {
+        const entities = {
+          ...(pending.result?.entities || {}),
+          ...result.entities,
+        };
+        pending.command = command;
+        pending.diff = { fields: entities };
+        pending.result = { ...result, entities };
+        pending.normalized = normalized;
+        pending.requestId = requestId;
+        updateItems(
+          [buildActionItem(entities, result.summary, "待确认")],
+          result.summary || pending.message,
+          "待确认",
+        );
+        conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+        conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
+        console.log(JSON.stringify({
+          event: "ai.pending_confirmation_updated",
+          request_id: requestId,
+          session_id: conversation.sessionId,
+          change_id: pending.id,
+          domain_version: conversation.domainSession.version,
+          ts: new Date().toISOString(),
+          data_source: "real",
+          is_injected: false,
+        }));
+        return;
+      }
       const proposal = proposeChange({
         session: conversation.domainSession,
         changeId,
@@ -228,6 +257,10 @@ function start() {
         conversation.domainSession.pendingChange.result = result;
         conversation.domainSession.pendingChange.normalized = normalized;
         conversation.domainSession.pendingChange.requestId = requestId;
+        const item = buildActionItem(result.entities, result.summary, "待确认");
+        updateItems([item], proposal.message, "待确认");
+        conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+        conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
         viewModel.state = "待确认";
         viewModel.response = proposal.message;
       }
@@ -300,17 +333,11 @@ function start() {
       render();
     } else if (["create_ticket", "update_field", "correct_entity"].includes(result.intent)) {
       const entity = conversation.entity;
-      const item = {
-        device: entity.device || "待提取",
-        issue: entity.issue || "待提取",
-        action: entity.issue || result.summary || normalized,
-        owner: entity.owner || "待提取",
-        deadline: entity.deadline || "待提取",
-        priority: entity.priority || "待提取",
-        status: result.needs_confirmation ? "待确认" : "处理中",
-        data_source: "real",
-        is_injected: false,
-      };
+      const item = buildActionItem(
+        entity,
+        result.summary || normalized,
+        result.needs_confirmation ? "待确认" : "处理中",
+      );
       updateItems(
         [item],
         result.summary || (result.intent === "correct_entity" ? "已更正行动项字段" : "AI 已更新行动项"),
