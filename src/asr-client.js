@@ -1,7 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
-const WebSocket = require("ws");
+const WebSocket = require("./websocket-client");
 
 const ASR_URL = "wss://maas.qianwenaiapi.com/api-ws/v1/inference";
 const ASR_MODEL = "qwen-audio-3.1-asr-flash-message";

@@ -1,7 +1,5 @@
 {
-  "dependencies": {
-    "ws": "^8.22.1"
-  },
+  "dependencies": {},
   "scripts": {
     "test": "node tests/intent-parser.test.js"
   },
