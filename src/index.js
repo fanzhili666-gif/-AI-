@@ -7,6 +7,7 @@ const { parseIntent } = require("./intent-parser");
 const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
 const { mergeContext } = require("./context-merge");
+const { resolveTarget } = require("./ambiguity-resolver");
 const { adaptAiResult } = require("./domain-adapter");
 const {
   createDomainSession,
@@ -140,6 +141,29 @@ function start() {
       requestId,
       baseVersion: conversation.domainSession.version,
     });
+    if (["UpdateActionItem", "CorrectEntity"].includes(command.type)) {
+      const target = resolveTarget({
+        items: viewModel.items,
+        target: command.target,
+      });
+      if (target.status !== "resolved") {
+        viewModel.state = target.status === "ambiguous" ? "待确认" : "异常";
+        viewModel.response = target.message || "无法确定要修改的行动项";
+        bumpAruiVersion();
+        render();
+        console.log(JSON.stringify({
+          event: "ai.ambiguous",
+          request_id: requestId,
+          session_id: conversation.sessionId,
+          reason: target.reason,
+          candidates: target.candidates || [],
+          ts: new Date().toISOString(),
+          data_source: "real",
+          is_injected: false,
+        }));
+        return;
+      }
+    }
     const domainResult = dispatchDomainCommand({
       command,
       session: conversation.domainSession,
