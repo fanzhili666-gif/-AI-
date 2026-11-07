@@ -248,7 +248,7 @@ function start() {
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
     retained.scrollView.readjustScroll(false);
-    retained.scrollView.scrollToY(1200, false);
+    retained.scrollView.scrollToY(retained.scrollView.getScrollBottom(), false);
   };
   const bumpAruiVersion = () => {
     viewModel.aruiVersion += 1;
