@@ -15,6 +15,13 @@ assert.equal(result.processor, "ai");
 assert.deepEqual(result.view.projection, ["device", "issue"]);
 assert.equal(result.needs_confirmation, true);
 
+assert.deepEqual(
+  normalizeAiResult({
+    intent: "filter",
+    filter: { owner: "李娜", status: "待确认" },
+  }).filter,
+  { owner: "李娜", status: "待确认" },
+);
 assert.throws(
   () => validateAiResult({ intent: "delete_everything" }),
   /未知 intent/,
@@ -28,6 +35,10 @@ assert.throws(
   /非法字段/,
 );
 assert.throws(
+  () => validateAiResult({ intent: "filter", filter: { device: "三号泵" } }),
+  /非法字段/,
+);
+assert.throws(
   () => validateAiResult({ intent: "create_ticket", needs_confirmation: "yes" }),
   /必须是布尔值/,
 );
@@ -36,4 +47,4 @@ assert.throws(
   /未知处理器/,
 );
 
-console.log("ai-result: 6 cases passed");
+console.log("ai-result: 8 cases passed");

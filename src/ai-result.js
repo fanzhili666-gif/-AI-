@@ -35,6 +35,17 @@ function validateAiResult(value) {
       }
     }
   }
+  if (value.filter !== undefined && value.filter !== null) {
+    if (!isPlainObject(value.filter)) throw new Error("AI filter 必须是对象或 null");
+    for (const key of Object.keys(value.filter)) {
+      if (!["owner", "priority", "status"].includes(key)) {
+        throw new Error(`AI filter 包含非法字段：${key}`);
+      }
+      if (typeof value.filter[key] !== "string") {
+        throw new Error(`AI filter.${key} 必须是字符串`);
+      }
+    }
+  }
   if (value.view !== undefined) {
     if (!isPlainObject(value.view)) throw new Error("AI view 必须是对象");
     if (value.view.projection !== undefined) {

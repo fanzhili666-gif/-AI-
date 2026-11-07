@@ -120,10 +120,16 @@ function start() {
         (!filter.priority || item.priority === filter.priority) &&
         (!filter.status || item.status === filter.status));
       viewModel.title = `行动项 ${viewModel.visibleItems.length}/${viewModel.items.length}`;
+      viewModel.state = "完成";
+      viewModel.response = result.summary || `已按条件筛选 ${viewModel.visibleItems.length} 条行动项`;
+      render();
     } else if (result.intent === "prioritize") {
       viewModel.highlighted = Boolean(result.view.highlight);
       viewModel.visibleItems = [...viewModel.items].sort((a, b) =>
         (b.status === "待确认") - (a.status === "待确认"));
+      viewModel.state = "完成";
+      viewModel.response = result.summary || "已将重点行动项置顶";
+      render();
     } else if (["create_ticket", "update_field"].includes(result.intent)) {
       const entity = conversation.entity;
       const item = {
