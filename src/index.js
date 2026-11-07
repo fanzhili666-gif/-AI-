@@ -44,6 +44,7 @@ function start() {
     isInjected: false,
     highlighted: false,
     projection: ["device", "issue", "owner", "deadline", "priority", "status"],
+    aruiVersion: 0,
     response: "输入会议安排，应用会自动提取行动项",
   };
   const conversation = {
@@ -92,6 +93,9 @@ function start() {
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
   };
+  const bumpAruiVersion = () => {
+    viewModel.aruiVersion += 1;
+  };
   render();
 
   const updateResponse = (message, state = viewModel.state) => {
@@ -106,9 +110,21 @@ function start() {
     viewModel.response = response;
     viewModel.state = state;
     viewModel.highlighted = items.some((item) => item.status === "待确认");
+    bumpAruiVersion();
     render();
   };
   const applyAiResult = (result, normalized, requestId) => {
+    if (requestId !== conversation.latestRequestId) {
+      console.log(JSON.stringify({
+        event: "ai.obsolete",
+        request_id: requestId,
+        session_id: conversation.sessionId,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
+      return;
+    }
     conversation.entity = { ...conversation.entity, ...result.entities };
     viewModel.projection = result.view.projection;
     conversation.history.push({ role: "user", text: normalized, request_id: requestId });
@@ -122,6 +138,7 @@ function start() {
       viewModel.title = `行动项 ${viewModel.visibleItems.length}/${viewModel.items.length}`;
       viewModel.state = "完成";
       viewModel.response = result.summary || `已按条件筛选 ${viewModel.visibleItems.length} 条行动项`;
+      bumpAruiVersion();
       render();
     } else if (result.intent === "prioritize") {
       viewModel.highlighted = Boolean(result.view.highlight);
@@ -129,6 +146,7 @@ function start() {
         (b.status === "待确认") - (a.status === "待确认"));
       viewModel.state = "完成";
       viewModel.response = result.summary || "已将重点行动项置顶";
+      bumpAruiVersion();
       render();
     } else if (["create_ticket", "update_field"].includes(result.intent)) {
       const entity = conversation.entity;
@@ -144,6 +162,11 @@ function start() {
         is_injected: false,
       };
       updateItems([item], result.summary || "AI 已更新行动项", result.needs_confirmation ? "待确认" : "完成");
+    } else if (result.intent === "summarize" || result.intent === "explain") {
+      viewModel.response = result.summary || "当前会话暂无摘要";
+      viewModel.state = result.needs_confirmation ? "待确认" : "完成";
+      bumpAruiVersion();
+      render();
     } else if (result.intent === "search_sop") {
       const query = result.retrieval?.query || [
         result.entities.device,
@@ -154,6 +177,7 @@ function start() {
         ? `SOP 检索：${matches.map((entry) => `${entry.title}（${entry.steps.join("；")}）`).join("\n")}`
         : "未检索到相关 SOP";
       viewModel.state = "完成";
+      bumpAruiVersion();
       console.log(JSON.stringify({
         event: "sop.retrieved",
         request_id: requestId,
@@ -178,6 +202,7 @@ function start() {
       entities: result.entities,
       processor: result.processor,
       state: viewModel.state,
+      arui_version: viewModel.aruiVersion,
       ts: new Date().toISOString(),
       data_source: "real",
       is_injected: false,
@@ -187,6 +212,8 @@ function start() {
     if (!process.env.DASHSCOPE_API_KEY) return false;
     viewModel.state = "处理中";
     viewModel.response = "AI 正在理解输入";
+    conversation.latestRequestId = requestId;
+    bumpAruiVersion();
     render();
     analyzeConversation({ history: conversation.history, text: normalized })
       .then((result) => applyAiResult(result, normalized, requestId))
@@ -198,6 +225,7 @@ function start() {
     return true;
   };
   const handleRuleText = (normalized, source, requestId) => {
+    conversation.latestRequestId = requestId;
     conversation.history.push({ role: "user", text: normalized, request_id: requestId });
     return processRuleText(normalized, source, requestId);
   };
@@ -207,6 +235,7 @@ function start() {
     viewModel.source = source;
     viewModel.isInjected = false;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    conversation.latestRequestId = requestId;
     console.log(JSON.stringify({
       event: "input.received",
       request_id: requestId,
