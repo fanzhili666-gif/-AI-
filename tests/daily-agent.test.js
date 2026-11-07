@@ -20,6 +20,7 @@ const agent = createDailyAgent({
   requestJson: async (request) => {
     assert.equal(request.enableSearch, true);
     assert.deepEqual(request.searchOptions, { enable_search_extension: true });
+    assert.equal(request.timeoutMs, 45000);
     return { response: "这是 AI 回复", intent: "chat" };
   },
 });

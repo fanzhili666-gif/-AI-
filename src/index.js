@@ -82,6 +82,15 @@ function start() {
     viewModel.response = "正在理解你的请求";
     conversation.latestRequestId = requestId;
     render();
+    console.log(JSON.stringify({
+      event: "daily_agent.requested",
+      request_id: requestId,
+      source,
+      text: normalized,
+      ts: new Date().toISOString(),
+      data_source: "real",
+      is_injected: false,
+    }));
     dailyAgent.handle({
       history: conversation.history,
       text: normalized,
@@ -107,6 +116,14 @@ function start() {
       }));
     }).catch((error) => {
       console.error("IrisView daily agent failed", error);
+      console.log(JSON.stringify({
+        event: "daily_agent.failed",
+        request_id: requestId,
+        reason: error.message,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
       if (requestId === conversation.latestRequestId) {
         updateResponse(`日常智能体暂时不可用：${error.message}`, "异常");
       }

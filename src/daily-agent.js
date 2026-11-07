@@ -122,6 +122,7 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
         messages,
         enableSearch: true,
         searchOptions: { enable_search_extension: true },
+        timeoutMs: 45000,
       });
       if (!raw || typeof raw.response !== "string") {
         throw new Error("日常智能体响应缺少 response");

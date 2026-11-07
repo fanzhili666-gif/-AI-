@@ -34,6 +34,7 @@ async function analyzeConversation({ history, text, requestJson = requestStructu
     messages,
     enableSearch: true,
     searchOptions: { enable_search_extension: true },
+    timeoutMs: 45000,
   });
   return normalizeAiResult(raw, "ai");
 }
