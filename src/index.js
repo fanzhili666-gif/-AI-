@@ -92,9 +92,9 @@ function start() {
     if (!conversation.transcript.length) return "暂无对话记录";
     const lines = [];
     let length = 0;
-    for (const entry of conversation.transcript.slice(-8).reverse()) {
+    for (const entry of conversation.transcript.slice(-4).reverse()) {
       const text = String(entry.text || "").replace(/\s+/g, " ").trim();
-      const remaining = Math.max(0, 720 - length);
+      const remaining = Math.max(0, 280 - length);
       if (!remaining) break;
       const preview = text.length > remaining ? `${text.slice(0, Math.max(0, remaining - 1))}…` : text;
       lines.unshift(`${entry.role === "user" ? "你" : "AI"}：${preview}`);
@@ -107,24 +107,9 @@ function start() {
     const entry = conversation.transcript.findLast((item) =>
       item.role === "assistant" && item.requestId === requestId);
     if (!entry) return;
-    entry.text = "";
-    let offset = 0;
-    retained.typingTimer = setInterval(() => {
-      if (requestId !== conversation.latestRequestId || offset >= text.length) {
-        clearInterval(retained.typingTimer);
-        retained.typingTimer = undefined;
-        if (requestId === conversation.latestRequestId) {
-          entry.text = text;
-          render();
-        }
-        return;
-      }
-      const chunk = text.slice(offset, offset + 2);
-      entry.text += chunk;
-      offset += chunk.length;
-      viewModel.response = entry.text;
-      render();
-    }, 140);
+    entry.text = text;
+    viewModel.response = text;
+    render();
   };
   const processDailyInput = (normalized, source, requestId) => {
     viewModel.source = source;
