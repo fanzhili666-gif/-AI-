@@ -40,4 +40,13 @@ function parseDeadlineUpdate(text) {
   return match ? `${match[1]}${match[2] || ""}` : null;
 }
 
-module.exports = { parseRuleActionItems, parseDeadlineUpdate, splitSegments };
+function isSummaryRequest(text) {
+  return /(?:总结|摘要|概括)(?:一下|当前|本次|这次)?/.test(String(text || ""));
+}
+
+module.exports = {
+  parseRuleActionItems,
+  parseDeadlineUpdate,
+  isSummaryRequest,
+  splitSegments,
+};

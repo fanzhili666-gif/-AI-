@@ -8,7 +8,11 @@ const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
 const { mergeContext } = require("./context-merge");
 const { resolveTarget } = require("./ambiguity-resolver");
-const { parseRuleActionItems, parseDeadlineUpdate } = require("./rule-action-parser");
+const {
+  parseRuleActionItems,
+  parseDeadlineUpdate,
+  isSummaryRequest,
+} = require("./rule-action-parser");
 const {
   proposeChange,
   confirmChange,
@@ -220,6 +224,48 @@ function start() {
       if (proposal.status !== "pending_confirmation") {
         viewModel.state = "异常";
         viewModel.response = proposal.message;
+      } else if (isSummaryRequest(normalized)) {
+        viewModel.visibleItems = viewModel.items;
+        viewModel.title = `行动项 ${viewModel.items.length}/${viewModel.items.length}`;
+        viewModel.state = "完成";
+        viewModel.highlighted = viewModel.items.some((item) => item.status === "待确认");
+        viewModel.response = viewModel.items.length
+          ? `当前工单共 ${viewModel.items.length} 条：${viewModel.items.map((item) =>
+            `${item.device || "设备待提取"}，${item.issue || item.action || "事项待提取"}，负责人${item.owner || "待提取"}，截止时间${item.deadline || "待提取"}`,
+          ).join("；")}`
+          : "当前暂无行动项";
+        bumpAruiVersion();
+        render();
+        console.log(JSON.stringify({
+          event: "action_items.summarized",
+          request_id: requestId,
+          result_count: viewModel.items.length,
+          ts: new Date().toISOString(),
+          data_source: "real",
+          is_injected: false,
+        }));
+        return;
+      } else if (isSummaryRequest(normalized)) {
+        viewModel.visibleItems = viewModel.items;
+        viewModel.title = `行动项 ${viewModel.items.length}/${viewModel.items.length}`;
+        viewModel.state = "完成";
+        viewModel.highlighted = viewModel.items.some((item) => item.status === "待确认");
+        viewModel.response = viewModel.items.length
+          ? `当前工单共 ${viewModel.items.length} 条：${viewModel.items.map((item) =>
+            `${item.device || "设备待提取"}，${item.issue || item.action || "事项待提取"}，负责人${item.owner || "待提取"}，截止时间${item.deadline || "待提取"}`,
+          ).join("；")}`
+          : "当前暂无行动项";
+        bumpAruiVersion();
+        render();
+        console.log(JSON.stringify({
+          event: "action_items.summarized",
+          request_id: requestId,
+          result_count: viewModel.items.length,
+          ts: new Date().toISOString(),
+          data_source: "real",
+          is_injected: false,
+        }));
+        return;
       } else {
         conversation.domainSession.pendingChange.result = result;
         conversation.domainSession.pendingChange.normalized = normalized;
