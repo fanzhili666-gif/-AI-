@@ -58,7 +58,7 @@ function start() {
 
   const viewModel = {
     state: "待命",
-    title: "行动项 0/0",
+    title: "AI 日常助手",
     items: [],
     visibleItems: [],
     source: "demo",
@@ -66,7 +66,7 @@ function start() {
     highlighted: false,
     projection: ["device", "issue", "owner", "reviewer", "deadline", "priority", "status"],
     aruiVersion: 0,
-    response: "请说话或输入文字，我可以和你聊天，也可以整理巡检工单",
+    response: "请说话或输入文字，我可以聊天、记录备忘、管理待办和安排日程",
   };
   const conversation = {
     sessionId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -151,11 +151,11 @@ function start() {
   };
   const render = () => {
     displayText.setText(
+      `AI 日常助手\n\n` +
       `${renderStateLabels()}\n\n` +
       `当前状态：${viewModel.state}\n\n` +
-      `${viewModel.title}\n\n` +
-      `${renderItems()}\n\n` +
-      `${viewModel.response}`,
+      `回复\n${viewModel.response}\n\n` +
+      `语音输入已开启 · 可直接说话`,
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
   };
