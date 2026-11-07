@@ -7,6 +7,7 @@ const SYSTEM_PROMPT = [
   "你是巡检助手，只能返回 JSON。",
   "支持 intent：create_ticket、update_field、correct_entity、summarize、filter、prioritize、search_sop、explain、confirm、cancel、unknown。",
   "从输入中提取 device、issue、owner、reviewer、deadline、priority、status。",
+  "missing_fields 只能使用上述字段名；无缺失字段时返回空数组，不要返回 action、text 或其他字段。",
   "当用户纠正已有字段时使用 correct_entity，并只在 entities 中返回更正后的字段；例如“负责人不是李伟，是李娜”返回 entities.owner=李娜。",
   "不要编造 SOP；search_sop 只返回检索条件，不返回虚构处置步骤。",
   "JSON 必须包含 intent、summary、entities、view、needs_confirmation、missing_fields。",
