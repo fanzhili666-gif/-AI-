@@ -33,11 +33,8 @@ const {
 const {
   Board,
   Color,
-  Direction,
   Font,
   FusionRoot,
-  ScrollbarMode,
-  ScrollView,
   Text,
   TextAlign,
 } = require("@irisview/osx/fusionui");
@@ -60,18 +57,11 @@ function start() {
   retained.board.setIgnoreLayout(true);
   retained.board.setSize([640, 480, 0]);
   retained.board.getLocalStyle().setBackgroundColor(Color.fromRGB8(0, 0, 0));
-  retained.scrollView = ScrollView.create();
-  retained.scrollView.setParent(retained.board);
-  retained.scrollView.setSize([640, 480, 0]);
-  retained.scrollView.setScrollDirection(Direction.VER);
-  retained.scrollView.setScrollbarMode(ScrollbarMode.AUTO);
-  retained.scrollView.setManualScroll(false);
-  retained.scrollView.setScrollMomentumEnable(true);
   const displayText = Text.create();
-  displayText.setParent(retained.scrollView);
-  displayText.setSize([640, 1200, 0]);
+  displayText.setParent(retained.board);
+  displayText.setSize([640, 480, 0]);
   displayText.getLocalStyle().setTextFont(Font.getCachedFont("", 24, 0, 0));
-  displayText.getLocalStyle().setTextAlign(TextAlign.TOP_LEFT);
+  displayText.getLocalStyle().setTextAlign(TextAlign.CENTER);
 
   const viewModel = {
     state: "待命",
@@ -247,8 +237,6 @@ function start() {
       `语音输入已开启 · 可直接说话`,
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
-    retained.scrollView.readjustScroll(false);
-    retained.scrollView.scrollToY(retained.scrollView.getScrollBottom(), false);
   };
   const bumpAruiVersion = () => {
     viewModel.aruiVersion += 1;
