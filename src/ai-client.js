@@ -3,13 +3,23 @@
 const AI_BASE_URL = "https://maas.qianwenaiapi.com/compatible-mode/v1";
 const AI_MODEL = "qwen3.8-flash";
 
-function buildStructuredRequest({ messages, model = AI_MODEL }) {
-  return {
+function buildStructuredRequest({
+  messages,
+  model = AI_MODEL,
+  enableSearch = false,
+  searchOptions,
+}) {
+  const request = {
     model,
     messages,
     response_format: { type: "json_object" },
     extra_body: { enable_thinking: false },
   };
+  if (enableSearch) {
+    request.enable_search = true;
+    request.search_options = searchOptions || { enable_search_extension: true };
+  }
+  return request;
 }
 
 function readStructuredContent(payload) {
@@ -24,7 +34,14 @@ function readStructuredContent(payload) {
   }
 }
 
-async function requestStructuredJson({ messages, apiKey = process.env.DASHSCOPE_API_KEY, fetchImpl = fetch, timeoutMs = 20000 }) {
+async function requestStructuredJson({
+  messages,
+  apiKey = process.env.DASHSCOPE_API_KEY,
+  fetchImpl = fetch,
+  timeoutMs = 20000,
+  enableSearch = false,
+  searchOptions,
+}) {
   if (!apiKey) throw new Error("DASHSCOPE_API_KEY 未配置");
   if (!Array.isArray(messages) || messages.length === 0) {
     throw new Error("AI 请求缺少 messages");
@@ -39,7 +56,11 @@ async function requestStructuredJson({ messages, apiKey = process.env.DASHSCOPE_
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(buildStructuredRequest({ messages })),
+      body: JSON.stringify(buildStructuredRequest({
+        messages,
+        enableSearch,
+        searchOptions,
+      })),
       signal: controller.signal,
     });
     const body = await response.json();

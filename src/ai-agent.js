@@ -30,7 +30,11 @@ function buildConversationMessages({ history = [], text }) {
 
 async function analyzeConversation({ history, text, requestJson = requestStructuredJson }) {
   const messages = buildConversationMessages({ history, text });
-  const raw = await requestJson({ messages });
+  const raw = await requestJson({
+    messages,
+    enableSearch: true,
+    searchOptions: { enable_search_extension: true },
+  });
   return normalizeAiResult(raw, "ai");
 }
 

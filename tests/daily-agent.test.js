@@ -17,7 +17,11 @@ const directory = fs.mkdtempSync(path.join(os.tmpdir(), "daily-agent-"));
 const filePath = path.join(directory, "data.json");
 const agent = createDailyAgent({
   filePath,
-  requestJson: async () => ({ response: "这是 AI 回复", intent: "chat" }),
+  requestJson: async (request) => {
+    assert.equal(request.enableSearch, true);
+    assert.deepEqual(request.searchOptions, { enable_search_extension: true });
+    return { response: "这是 AI 回复", intent: "chat" };
+  },
 });
 
 (async () => {

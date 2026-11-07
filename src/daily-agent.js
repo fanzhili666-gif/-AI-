@@ -118,7 +118,11 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
           .map((entry) => ({ role: entry.role, content: entry.text })),
         { role: "user", content: String(text).trim() },
       ];
-      const raw = await requestJson({ messages });
+      const raw = await requestJson({
+        messages,
+        enableSearch: true,
+        searchOptions: { enable_search_extension: true },
+      });
       if (!raw || typeof raw.response !== "string") {
         throw new Error("日常智能体响应缺少 response");
       }

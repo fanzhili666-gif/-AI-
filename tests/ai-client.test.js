@@ -16,6 +16,12 @@ async function main() {
   assert.equal(request.model, AI_MODEL);
   assert.equal(request.response_format.type, "json_object");
   assert.equal(request.extra_body.enable_thinking, false);
+  const searchRequest = buildStructuredRequest({
+    messages: [{ role: "user", content: "今天北京天气" }],
+    enableSearch: true,
+  });
+  assert.equal(searchRequest.enable_search, true);
+  assert.equal(searchRequest.search_options.enable_search_extension, true);
   assert.equal(AI_BASE_URL, "https://maas.qianwenaiapi.com/compatible-mode/v1");
 
   assert.deepEqual(
@@ -33,6 +39,22 @@ async function main() {
     fetchImpl: async (url, options) => {
       assert.equal(url, `${AI_BASE_URL}/chat/completions`);
       assert.equal(options.headers.Authorization, "Bearer test-key");
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ choices: [{ message: { content: '{"ok":true}' } }] }),
+      };
+    },
+  });
+
+  await requestStructuredJson({
+    apiKey: "test-key",
+    enableSearch: true,
+    messages: [{ role: "user", content: "今天北京天气" }],
+    fetchImpl: async (_url, options) => {
+      const body = JSON.parse(options.body);
+      assert.equal(body.enable_search, true);
+      assert.equal(body.search_options.enable_search_extension, true);
       return {
         ok: true,
         status: 200,
