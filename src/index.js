@@ -7,7 +7,7 @@ const {
   requestVoiceInput,
   takeTextInput,
 } = require("@irisview/osx/os/input");
-const { Board, Color, Font, FusionRoot, Switch, Text, TextAlign } = require("@irisview/osx/fusionui");
+const { Board, Color, Font, FusionRoot, Text, TextAlign } = require("@irisview/osx/fusionui");
 
 const retained = {};
 
@@ -32,14 +32,13 @@ function start() {
 
   const viewModel = {
     state: "待命",
-    title: "行动项",
-    action: "准备接收会议指令",
-    owner: "—",
-    deadline: "—",
+    title: "行动项 0/0",
+    items: [],
+    visibleItems: [],
     source: "demo",
     isInjected: false,
     highlighted: false,
-    response: "输入“安排张薇今天完成测试报告”开始演示",
+    response: "输入会议安排，应用会自动提取行动项",
   };
   const stateColors = {
     待命: Color.fromRGB8(120, 220, 150),
@@ -48,14 +47,20 @@ function start() {
     完成: Color.fromRGB8(80, 255, 140),
     异常: Color.fromRGB8(255, 100, 100),
   };
+  const renderItems = () => {
+    if (!viewModel.visibleItems.length) return "暂无匹配行动项";
+    return viewModel.visibleItems.map((item, index) => {
+      const marker = viewModel.highlighted && index === 0 ? "【置顶 · 高亮】" : "";
+      return `${index + 1}. ${marker}${item.action}\n` +
+        `负责人：${item.owner}  截止：${item.deadline}  状态：${item.status}\n` +
+        `来源：${item.data_source}  is_injected=${item.is_injected}`;
+    }).join("\n\n");
+  };
   const render = () => {
-    const emphasis = viewModel.highlighted ? "【置顶 · 高亮】" : "";
     displayText.setText(
-      `${viewModel.state}  ${emphasis}\n\n` +
-      `${viewModel.title}\n` +
-      `任务：${viewModel.action}\n` +
-      `负责人：${viewModel.owner}    截止：${viewModel.deadline}\n` +
-      `来源：${viewModel.source}  is_injected=${viewModel.isInjected}\n\n` +
+      `${viewModel.state}\n\n` +
+      `${viewModel.title}\n\n` +
+      `${renderItems()}\n\n` +
       `${viewModel.response}`,
     );
     displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
@@ -67,15 +72,53 @@ function start() {
     viewModel.state = state;
     render();
   };
+  const updateItems = (items, response, state = "完成") => {
+    viewModel.items = items;
+    viewModel.visibleItems = items;
+    viewModel.title = `行动项 ${items.length}/${items.length}`;
+    viewModel.response = response;
+    viewModel.state = state;
+    viewModel.highlighted = items.some((item) => item.status === "待确认");
+    render();
+  };
   const handleText = (text) => {
     const normalized = text.trim();
     if (!normalized) return;
     viewModel.source = "real";
     viewModel.isInjected = false;
+    const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    console.log(JSON.stringify({
+      event: "input.received",
+      request_id: requestId,
+      source: "text",
+      text: normalized,
+      ts: new Date().toISOString(),
+      data_source: "real",
+      is_injected: false,
+    }));
     if (normalized === "待命") {
       viewModel.state = "待命";
       viewModel.response = "等待下一条输入";
       viewModel.highlighted = false;
+      viewModel.visibleItems = viewModel.items;
+      viewModel.title = `行动项 ${viewModel.items.length}/${viewModel.items.length}`;
+    } else if (normalized.startsWith("只保留")) {
+      const owner = normalized.replace(/^只保留/, "").replace(/的任务$/, "").trim();
+      const visibleItems = viewModel.items.filter((item) => item.owner === owner);
+      viewModel.visibleItems = visibleItems;
+      viewModel.title = `行动项 ${visibleItems.length}/${viewModel.items.length}`;
+      viewModel.state = "完成";
+      viewModel.highlighted = false;
+      viewModel.response = `已筛选负责人：${owner}`;
+      console.log(JSON.stringify({
+        event: "action_items.filtered",
+        request_id: requestId,
+        owner,
+        result_count: visibleItems.length,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
     } else if (normalized === "待确认" || normalized.includes("待确认置顶并高亮")) {
       viewModel.state = "待确认";
       viewModel.highlighted = true;
@@ -88,23 +131,49 @@ function start() {
       viewModel.response = "行动项已更新";
     } else {
       viewModel.state = "处理中";
-      viewModel.action = normalized;
-      viewModel.owner = normalized.includes("张薇") ? "张薇" : "待提取";
-      viewModel.deadline = normalized.includes("今天") ? "今天" : "待提取";
       viewModel.highlighted = false;
-      viewModel.response = "正在解析输入";
+      viewModel.response = "正在提取行动项";
       render();
-      setTimeout(() => {
-        if (viewModel.state === "处理中" && viewModel.action === normalized) {
-          viewModel.state = "完成";
-          viewModel.response = "内容已更新";
-          render();
-        }
-      }, 700);
+      const items = extractActionItems(normalized);
+      updateItems(items, items.length ? `已自动提取 ${items.length} 条行动项` : "未识别到行动项", items.length ? "完成" : "异常");
+      console.log(JSON.stringify({
+        event: "action_items.extracted",
+        request_id: requestId,
+        result_count: items.length,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
       return;
     }
+    console.log(JSON.stringify({
+      event: "arui.updated",
+      request_id: requestId,
+      state: viewModel.state,
+      result_count: viewModel.visibleItems.length,
+      ts: new Date().toISOString(),
+      data_source: "real",
+      is_injected: false,
+    }));
     render();
   };
+  const extractActionItems = (text) => text
+    .split(/[，。；;]+/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .map((segment) => {
+      const match = segment.match(/^(?:安排|请)?([\u4e00-\u9fff]{2,3})(今天|明天|后天|本周)?(?:完成|准备|处理|提交|跟进|撰写|发布)(.+)$/);
+      if (!match) return null;
+      return {
+        action: match[3].trim(),
+        owner: match[1],
+        deadline: match[2] || "待提取",
+        status: "待确认",
+        data_source: "real",
+        is_injected: false,
+      };
+    })
+    .filter(Boolean);
   setTimeout(() => startVoiceInput(updateResponse), 0);
   retained.inputTimer = setInterval(() => {
     const input = takeTextInput();
@@ -163,7 +232,6 @@ App.createApp((lifecycle) => {
     if (retained.voiceSession) retained.voiceSession.cancel();
     retained.inputTimer = undefined;
     retained.voiceSession = undefined;
-    retained.toggle = undefined;
     retained.board = undefined;
     retained.root = undefined;
     retained.window = undefined;
