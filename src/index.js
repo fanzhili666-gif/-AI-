@@ -564,7 +564,9 @@ function start() {
     } else if (normalized === "完成") {
       viewModel.state = "完成";
       viewModel.response = "行动项已更新";
-    } else if (isSummaryRequest(normalized)) {
+    } else if (isSummaryRequest(normalized) &&
+        !parseRuleActionItems(normalized).length &&
+        parseIntent(normalized).intent !== "correct_entity") {
       viewModel.visibleItems = viewModel.items;
       viewModel.title = `行动项 ${viewModel.items.length}/${viewModel.items.length}`;
       viewModel.state = "完成";
