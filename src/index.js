@@ -57,11 +57,18 @@ function start() {
   retained.board.setIgnoreLayout(true);
   retained.board.setSize([640, 480, 0]);
   retained.board.getLocalStyle().setBackgroundColor(Color.fromRGB8(0, 0, 0));
-  const displayText = Text.create();
-  displayText.setParent(retained.board);
-  displayText.setSize([640, 480, 0]);
-  displayText.getLocalStyle().setTextFont(Font.getCachedFont("", 24, 0, 0));
-  displayText.getLocalStyle().setTextAlign(TextAlign.CENTER);
+  const createTextRegion = (position, size, align = TextAlign.TOP_LEFT) => {
+    const text = Text.create();
+    text.setParent(retained.board);
+    text.setPosition(position);
+    text.setSize(size);
+    text.getLocalStyle().setTextFont(Font.getCachedFont("", 24, 0, 0));
+    text.getLocalStyle().setTextAlign(align);
+    return text;
+  };
+  const headerText = createTextRegion([24, 18, 0], [592, 52, 0]);
+  const conversationText = createTextRegion([24, 76, 0], [592, 320, 0]);
+  const inputHintText = createTextRegion([24, 414, 0], [592, 42, 0]);
 
   const viewModel = {
     state: "待命",
@@ -214,14 +221,12 @@ function start() {
     }).join("\n\n");
   };
   const render = () => {
-    displayText.setText(
-      `AI 日常助手\n\n` +
-      `${renderStateLabels()}\n\n` +
-      `当前状态：${viewModel.state}\n\n` +
-      `对话记录\n${renderTranscript()}\n\n` +
-      `语音输入已开启 · 可直接说话`,
-    );
-    displayText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
+    headerText.setText(`AI 日常助手    ${viewModel.state}\n${renderStateLabels()}`);
+    conversationText.setText(renderTranscript());
+    inputHintText.setText("＋  说话或输入文字    ·    语音输入已开启");
+    headerText.getLocalStyle().setTextColor(stateColors[viewModel.state]);
+    conversationText.getLocalStyle().setTextColor(Color.fromRGB8(220, 220, 220));
+    inputHintText.getLocalStyle().setTextColor(Color.fromRGB8(150, 150, 150));
   };
   const bumpAruiVersion = () => {
     viewModel.aruiVersion += 1;
