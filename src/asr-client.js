@@ -80,7 +80,11 @@ class AsrClient {
   finish() {
     if (this.finished || this.finishRequested) return;
     this.finishRequested = true;
-    if (!this.started) return;
+    this.sendFinishTask();
+  }
+
+  sendFinishTask() {
+    if (!this.started || this.finished) return;
     this.send({
       header: {
         action: "finish-task",
@@ -116,7 +120,7 @@ class AsrClient {
       this.onStatus("语音识别已连接，请说话");
       for (const frame of this.pendingFrames) this.socket.send(frame);
       this.pendingFrames = [];
-      if (this.finishRequested) this.finish();
+      if (this.finishRequested) this.sendFinishTask();
       return;
     }
     if (event === "result-generated") {

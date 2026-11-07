@@ -156,7 +156,15 @@ function start() {
       viewModel.response = "正在提取行动项";
       render();
       const items = extractActionItems(normalized);
-      updateItems(items, items.length ? `已自动提取 ${items.length} 条行动项` : "未识别到行动项", items.length ? "完成" : "异常");
+      updateItems(
+        items,
+        items.length
+          ? `已自动提取 ${items.length} 条行动项`
+          : source === "voice-asr"
+            ? `语音转写完成，未识别到行动项：${normalized}`
+            : "未识别到行动项",
+        "完成",
+      );
       console.log(JSON.stringify({
         event: "action_items.extracted",
         request_id: requestId,
