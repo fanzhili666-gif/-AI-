@@ -8,6 +8,7 @@ const { searchSop } = require("./sop-search");
 const { projectEntity } = require("./view-projection");
 const { mergeContext } = require("./context-merge");
 const { resolveTarget } = require("./ambiguity-resolver");
+const { parseRuleActionItems, parseDeadlineUpdate } = require("./rule-action-parser");
 const {
   proposeChange,
   confirmChange,
@@ -371,7 +372,12 @@ function start() {
       .catch((error) => {
         console.error("IrisView AI processing failed", error);
         updateResponse(`AI 不可用，已切换规则模式：${error.message}`, "处理中");
-        handleRuleText(normalized, source, requestId);
+        try {
+          handleRuleText(normalized, source, requestId);
+        } catch (fallbackError) {
+          console.error("IrisView rule fallback failed", fallbackError);
+          updateResponse(`规则回退失败：${fallbackError.message}`, "异常");
+        }
       });
     return true;
   };
@@ -507,7 +513,15 @@ function start() {
       viewModel.highlighted = false;
       viewModel.response = "正在提取行动项";
       render();
+      const deadline = parseDeadlineUpdate(normalized);
       const items = extractActionItems(normalized);
+      if (deadline) {
+        if (items.length) {
+          for (const item of items) item.deadline = deadline;
+        } else if (viewModel.items.length) {
+          items.push(...viewModel.items.map((item) => ({ ...item, deadline })));
+        }
+      }
       updateItems(
         items,
         items.length
@@ -538,28 +552,17 @@ function start() {
     }));
     render();
   };
-  const extractActionItems = (text) => text
-    .split(/[，。；;]+/)
-    .map((segment) => segment.trim())
-    .filter(Boolean)
-    .map((segment) => {
-      const match = segment.match(/^(?:安排|请)?([\u4e00-\u9fff]{2,3})(今天|明天|后天|本周)?(?:完成|准备|处理|提交|跟进|撰写|发布)(.+)$/);
-      if (!match) return null;
-      return {
-        action: match[3].trim(),
-        owner: match[1],
-        deadline: match[2] || "待提取",
-        status: "待确认",
-        data_source: "real",
-        is_injected: false,
-      };
-    })
-    .filter(Boolean);
+  const extractActionItems = (text) => parseRuleActionItems(text);
   setTimeout(() => startVoiceInput(updateResponse), 0);
   retained.inputTimer = setInterval(() => {
-    const input = takeTextInput();
-    if (input) handleText(input.text);
-    readVoiceEvents(updateResponse);
+    try {
+      const input = takeTextInput();
+      if (input && typeof input.text === "string") handleText(input.text);
+      readVoiceEvents(updateResponse);
+    } catch (error) {
+      console.error("IrisView input event loop failed", error);
+      updateResponse(`输入事件异常：${error.message}`, "异常");
+    }
   }, 50);
   console.log("IrisView application ready: example.myfirstapp");
 }
