@@ -476,6 +476,15 @@ function start() {
       }));
       return;
     }
+    const lines = normalized.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    if (lines.length > 1 && lines.every((line) =>
+      isSummaryRequest(line) ||
+      parseDeadlineUpdate(line) ||
+      parseRuleActionItems(line).length ||
+      parseIntent(line).intent === "correct_entity")) {
+      for (const line of lines) handleRuleText(line, source, requestId);
+      return;
+    }
     const hasDeterministicRule = Boolean(
       isSummaryRequest(normalized) ||
       parseDeadlineUpdate(normalized) ||
