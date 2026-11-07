@@ -1,7 +1,8 @@
 "use strict";
 
-const { applicationDataDirectory } = require("./application-data");
+const { applicationDataDirectory, applicationDataPath } = require("./application-data");
 const { AsrClient } = require("./asr-client");
+const { createDailyAgent } = require("./daily-agent");
 const { analyzeConversation } = require("./ai-agent");
 const { parseIntent } = require("./intent-parser");
 const { searchSop } = require("./sop-search");
@@ -36,6 +37,9 @@ const retained = {};
 function start() {
   if (retained.window) return;
   retained.dataDirectory = applicationDataDirectory();
+  const dailyAgent = createDailyAgent({
+    filePath: applicationDataPath("daily-agent.json"),
+  });
   const property = WindowProperty.create();
   property.setTitle("My First App");
   property.setSize([0.64, 0.48, 0.01]);
@@ -72,6 +76,42 @@ function start() {
     changes: [],
   };
   conversation.domainSession = createDomainSession(conversation.sessionId);
+  const processDailyInput = (normalized, source, requestId) => {
+    viewModel.source = source;
+    viewModel.state = "处理中";
+    viewModel.response = "正在理解你的请求";
+    conversation.latestRequestId = requestId;
+    render();
+    dailyAgent.handle({
+      history: conversation.history,
+      text: normalized,
+    }).then((result) => {
+      if (requestId !== conversation.latestRequestId) return;
+      conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+      conversation.history.push({ role: "assistant", text: result.response, request_id: requestId });
+      viewModel.title = "日常智能体";
+      viewModel.items = [];
+      viewModel.visibleItems = [];
+      viewModel.state = "完成";
+      viewModel.response = result.response;
+      bumpAruiVersion();
+      render();
+      console.log(JSON.stringify({
+        event: result.processor === "ai" ? "daily_agent.responded" : "daily_agent.executed",
+        request_id: requestId,
+        intent: result.intent,
+        processor: result.processor,
+        ts: new Date().toISOString(),
+        data_source: "real",
+        is_injected: false,
+      }));
+    }).catch((error) => {
+      console.error("IrisView daily agent failed", error);
+      if (requestId === conversation.latestRequestId) {
+        updateResponse(`日常智能体暂时不可用：${error.message}`, "异常");
+      }
+    });
+  };
   const handleVoiceText = (text, final) => {
     if (!text) return;
     viewModel.response = `语音转写${final ? "完成" : "中"}：${text}`;
@@ -480,6 +520,8 @@ function start() {
       data_source: "real",
       is_injected: false,
     }));
+    processDailyInput(normalized, source, requestId);
+    return;
     if (/^(?:确认|执行|好的|取消|撤销)/.test(normalized)) {
       const pending = conversation.domainSession.pendingChange;
       const decision = /^(?:取消|撤销)/.test(normalized) ? "cancel" : "confirm";
