@@ -4,6 +4,8 @@ const { applicationDataDirectory } = require("./application-data");
 const { AsrClient } = require("./asr-client");
 const { analyzeConversation } = require("./ai-agent");
 const { parseIntent } = require("./intent-parser");
+const { searchSop } = require("./sop-search");
+const { projectEntity } = require("./view-projection");
 const { App, AppLifecycle, Window, WindowProperty } = require("@irisview/osx/os");
 const {
   getVoiceInputAvailability,
@@ -41,6 +43,7 @@ function start() {
     source: "demo",
     isInjected: false,
     highlighted: false,
+    projection: ["device", "issue", "owner", "deadline", "priority", "status"],
     response: "输入会议安排，应用会自动提取行动项",
   };
   const conversation = {
@@ -68,8 +71,15 @@ function start() {
     if (!viewModel.visibleItems.length) return "暂无匹配行动项";
     return viewModel.visibleItems.map((item, index) => {
       const marker = viewModel.highlighted && index === 0 ? "【置顶 · 高亮】" : "";
-      return `${index + 1}. ${marker}${item.action}\n` +
-        `负责人：${item.owner}  截止：${item.deadline}  状态：${item.status}\n` +
+      const fields = projectEntity({
+        device: item.device,
+        issue: item.issue || item.action,
+        owner: item.owner,
+        deadline: item.deadline,
+        priority: item.priority,
+        status: item.status,
+      }, viewModel.projection);
+      return `${index + 1}. ${marker}${fields.join("  ")}\n` +
         `来源：${item.data_source}  is_injected=${item.is_injected}`;
     }).join("\n\n");
   };
@@ -100,13 +110,15 @@ function start() {
   };
   const applyAiResult = (result, normalized, requestId) => {
     conversation.entity = { ...conversation.entity, ...result.entities };
+    viewModel.projection = result.view.projection;
     conversation.history.push({ role: "user", text: normalized, request_id: requestId });
     conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
     if (result.intent === "filter") {
-      const owner = result.filter?.owner || result.entities.owner;
-      viewModel.visibleItems = owner
-        ? viewModel.items.filter((item) => item.owner === owner)
-        : viewModel.items;
+      const filter = result.filter || {};
+      viewModel.visibleItems = viewModel.items.filter((item) =>
+        (!filter.owner || item.owner === filter.owner) &&
+        (!filter.priority || item.priority === filter.priority) &&
+        (!filter.status || item.status === filter.status));
       viewModel.title = `行动项 ${viewModel.visibleItems.length}/${viewModel.items.length}`;
     } else if (result.intent === "prioritize") {
       viewModel.highlighted = Boolean(result.view.highlight);
@@ -115,14 +127,38 @@ function start() {
     } else if (["create_ticket", "update_field"].includes(result.intent)) {
       const entity = conversation.entity;
       const item = {
+        device: entity.device || "待提取",
+        issue: entity.issue || "待提取",
         action: entity.issue || result.summary || normalized,
         owner: entity.owner || "待提取",
         deadline: entity.deadline || "待提取",
+        priority: entity.priority || "待提取",
         status: result.needs_confirmation ? "待确认" : "处理中",
         data_source: "real",
         is_injected: false,
       };
       updateItems([item], result.summary || "AI 已更新行动项", result.needs_confirmation ? "待确认" : "完成");
+    } else if (result.intent === "search_sop") {
+      const query = result.retrieval?.query || [
+        result.entities.device,
+        result.entities.issue,
+      ].filter(Boolean).join(" ");
+      const matches = searchSop(query);
+      viewModel.response = matches.length
+        ? `SOP 检索：${matches.map((entry) => `${entry.title}（${entry.steps.join("；")}）`).join("\n")}`
+        : "未检索到相关 SOP";
+      viewModel.state = "完成";
+      console.log(JSON.stringify({
+        event: "sop.retrieved",
+        request_id: requestId,
+        query,
+        result_count: matches.length,
+        results: matches.map((entry) => ({ id: entry.id, data_source: entry.data_source })),
+        ts: new Date().toISOString(),
+        data_source: matches.length ? "demo" : "real",
+        is_injected: false,
+      }));
+      render();
     } else {
       viewModel.response = result.summary || "AI 已完成处理";
       viewModel.state = result.needs_confirmation ? "待确认" : "完成";
