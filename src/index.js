@@ -228,8 +228,17 @@ function startVoiceInput(updateResponse) {
     retained.asr = new AsrClient({
       onStatus: (message) => updateResponse(message, "处理中"),
       onText: retained.voiceTextHandler,
-      onError: (error) => updateResponse(`语音识别失败：${error.message}`, "异常"),
-      onFinished: () => updateResponse("语音识别完成", "完成"),
+      onError: (error) => {
+        updateResponse(`语音识别失败：${error.message}`, "异常");
+        if (retained.voiceSession) retained.voiceSession.cancel();
+        retained.voiceSession = undefined;
+        retained.asr = undefined;
+        scheduleVoiceRestart(updateResponse);
+      },
+      onFinished: () => {
+        updateResponse("语音识别完成", "完成");
+        scheduleVoiceRestart(updateResponse);
+      },
     });
     const asrStarted = retained.asr.start();
     if (!asrStarted) {
@@ -256,16 +265,30 @@ function readVoiceEvents(updateResponse) {
     } else if (event.type === "state") {
       updateResponse(`语音状态：${event.state}`, "处理中");
     } else if (event.type === "end") {
+      const cancelled = event.status !== "completed" && event.reason === "user-cancelled";
       updateResponse(
         event.status === "completed"
           ? `语音已接收（${retained.voiceFrames} 帧），正在完成识别`
-          : `语音结束：${event.reason}`,
-        event.status === "completed" ? "处理中" : "异常",
+          : cancelled ? "语音采集已取消，可重新采集" : `语音结束：${event.reason}`,
+        event.status === "completed" || cancelled ? "完成" : "异常",
       );
       if (event.status === "completed" && retained.asr) retained.asr.finish();
+      if (cancelled) {
+        if (retained.asr) retained.asr.close();
+        retained.asr = undefined;
+        scheduleVoiceRestart(updateResponse);
+      }
       retained.voiceSession = undefined;
       retained.voiceFrames = 0;
     }
+  }
+
+  function scheduleVoiceRestart(updateResponse) {
+    if (!retained.inputTimer || retained.voiceRestartTimer) return;
+    retained.voiceRestartTimer = setTimeout(() => {
+      retained.voiceRestartTimer = undefined;
+      if (retained.inputTimer && !retained.voiceSession) startVoiceInput(updateResponse);
+    }, 500);
   }
 }
 
@@ -273,12 +296,14 @@ App.createApp((lifecycle) => {
   if (lifecycle === AppLifecycle.ON_CREATE) start();
   if (lifecycle === AppLifecycle.ON_DESTROY) {
     if (retained.inputTimer) clearInterval(retained.inputTimer);
+    if (retained.voiceRestartTimer) clearTimeout(retained.voiceRestartTimer);
     if (retained.voiceSession) retained.voiceSession.cancel();
     if (retained.asr) retained.asr.close();
     retained.inputTimer = undefined;
     retained.voiceSession = undefined;
     retained.asr = undefined;
     retained.voiceTextHandler = undefined;
+    retained.voiceRestartTimer = undefined;
     retained.board = undefined;
     retained.root = undefined;
     retained.window = undefined;

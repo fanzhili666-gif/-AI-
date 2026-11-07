@@ -91,7 +91,7 @@ class AsrClient {
         task_id: this.taskId,
         streaming: "duplex",
       },
-      payload: {},
+      payload: { input: {} },
     });
   }
 
