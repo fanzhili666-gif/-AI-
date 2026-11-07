@@ -88,6 +88,10 @@ function start() {
     完成: Color.fromRGB8(80, 255, 140),
     异常: Color.fromRGB8(255, 100, 100),
   };
+  const observableStates = ["待命", "处理中", "待确认", "完成", "异常"];
+  const renderStateLabels = () => `状态栏：${observableStates.map((state) =>
+    state === viewModel.state ? `【● ${state}】` : `○ ${state}`,
+  ).join("  ")}`;
   const renderItems = () => {
     if (!viewModel.visibleItems.length) return "暂无匹配行动项";
     return viewModel.visibleItems.map((item, index) => {
@@ -107,7 +111,8 @@ function start() {
   };
   const render = () => {
     displayText.setText(
-      `${viewModel.state}\n\n` +
+      `${renderStateLabels()}\n\n` +
+      `当前状态：${viewModel.state}\n\n` +
       `${viewModel.title}\n\n` +
       `${renderItems()}\n\n` +
       `${viewModel.response}`,
