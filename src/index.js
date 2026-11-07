@@ -2,6 +2,7 @@
 
 const { applicationDataDirectory } = require("./application-data");
 const { AsrClient } = require("./asr-client");
+const { analyzeConversation } = require("./ai-agent");
 const { parseIntent } = require("./intent-parser");
 const { App, AppLifecycle, Window, WindowProperty } = require("@irisview/osx/os");
 const {
@@ -41,6 +42,11 @@ function start() {
     isInjected: false,
     highlighted: false,
     response: "输入会议安排，应用会自动提取行动项",
+  };
+  const conversation = {
+    sessionId: `session-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    history: [],
+    entity: {},
   };
   const handleVoiceText = (text, final) => {
     if (!text) return;
@@ -92,13 +98,73 @@ function start() {
     viewModel.highlighted = items.some((item) => item.status === "待确认");
     render();
   };
+  const applyAiResult = (result, normalized, requestId) => {
+    conversation.entity = { ...conversation.entity, ...result.entities };
+    conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+    conversation.history.push({ role: "assistant", text: result.summary, request_id: requestId });
+    if (result.intent === "filter") {
+      const owner = result.filter?.owner || result.entities.owner;
+      viewModel.visibleItems = owner
+        ? viewModel.items.filter((item) => item.owner === owner)
+        : viewModel.items;
+      viewModel.title = `行动项 ${viewModel.visibleItems.length}/${viewModel.items.length}`;
+    } else if (result.intent === "prioritize") {
+      viewModel.highlighted = Boolean(result.view.highlight);
+      viewModel.visibleItems = [...viewModel.items].sort((a, b) =>
+        (b.status === "待确认") - (a.status === "待确认"));
+    } else if (["create_ticket", "update_field"].includes(result.intent)) {
+      const entity = conversation.entity;
+      const item = {
+        action: entity.issue || result.summary || normalized,
+        owner: entity.owner || "待提取",
+        deadline: entity.deadline || "待提取",
+        status: result.needs_confirmation ? "待确认" : "处理中",
+        data_source: "real",
+        is_injected: false,
+      };
+      updateItems([item], result.summary || "AI 已更新行动项", result.needs_confirmation ? "待确认" : "完成");
+    } else {
+      viewModel.response = result.summary || "AI 已完成处理";
+      viewModel.state = result.needs_confirmation ? "待确认" : "完成";
+      render();
+    }
+    console.log(JSON.stringify({
+      event: "ai.processed",
+      request_id: requestId,
+      session_id: conversation.sessionId,
+      intent: result.intent,
+      entities: result.entities,
+      processor: result.processor,
+      state: viewModel.state,
+      ts: new Date().toISOString(),
+      data_source: "real",
+      is_injected: false,
+    }));
+  };
+  const tryAi = (normalized, source, requestId) => {
+    if (!process.env.DASHSCOPE_API_KEY) return false;
+    viewModel.state = "处理中";
+    viewModel.response = "AI 正在理解输入";
+    render();
+    analyzeConversation({ history: conversation.history, text: normalized })
+      .then((result) => applyAiResult(result, normalized, requestId))
+      .catch((error) => {
+        console.error("IrisView AI processing failed", error);
+        updateResponse(`AI 不可用，已切换规则模式：${error.message}`, "处理中");
+        handleRuleText(normalized, source, requestId);
+      });
+    return true;
+  };
+  const handleRuleText = (normalized, source, requestId) => {
+    conversation.history.push({ role: "user", text: normalized, request_id: requestId });
+    return processRuleText(normalized, source, requestId);
+  };
   const handleText = (text, source = "text") => {
     const normalized = text.trim();
     if (!normalized) return;
     viewModel.source = source;
     viewModel.isInjected = false;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const parsedIntent = parseIntent(normalized);
     console.log(JSON.stringify({
       event: "input.received",
       request_id: requestId,
@@ -108,6 +174,15 @@ function start() {
       data_source: "real",
       is_injected: false,
     }));
+    if (!["待命", "待确认", "异常", "完成"].includes(normalized) &&
+        !normalized.startsWith("只保留") &&
+        tryAi(normalized, source, requestId)) {
+      return;
+    }
+    processRuleText(normalized, source, requestId);
+  };
+  const processRuleText = (normalized, source, requestId) => {
+    const parsedIntent = parseIntent(normalized);
     console.log(JSON.stringify({
       event: "intent.parsed",
       request_id: requestId,
