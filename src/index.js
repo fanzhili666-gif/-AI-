@@ -1,6 +1,7 @@
 "use strict";
 
 const { applicationDataDirectory } = require("./application-data");
+const { AsrClient } = require("./asr-client");
 const { parseIntent } = require("./intent-parser");
 const { App, AppLifecycle, Window, WindowProperty } = require("@irisview/osx/os");
 const {
@@ -41,6 +42,15 @@ function start() {
     highlighted: false,
     response: "输入会议安排，应用会自动提取行动项",
   };
+  const handleVoiceText = (text, final) => {
+    if (!text) return;
+    viewModel.response = `语音转写${final ? "完成" : "中"}：${text}`;
+    viewModel.state = final ? "完成" : "处理中";
+    viewModel.source = "voice-asr";
+    render();
+    if (final) handleText(text, "voice-asr");
+  };
+  retained.voiceTextHandler = handleVoiceText;
   const stateColors = {
     待命: Color.fromRGB8(120, 220, 150),
     处理中: Color.fromRGB8(100, 190, 255),
@@ -82,17 +92,17 @@ function start() {
     viewModel.highlighted = items.some((item) => item.status === "待确认");
     render();
   };
-  const handleText = (text) => {
+  const handleText = (text, source = "text") => {
     const normalized = text.trim();
     if (!normalized) return;
-    viewModel.source = "real";
+    viewModel.source = source;
     viewModel.isInjected = false;
     const requestId = `req-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const parsedIntent = parseIntent(normalized);
     console.log(JSON.stringify({
       event: "input.received",
       request_id: requestId,
-      source: "text",
+      source,
       text: normalized,
       ts: new Date().toISOString(),
       data_source: "real",
@@ -207,6 +217,19 @@ function startVoiceInput(updateResponse) {
     }
     retained.voiceSession = requestVoiceInput({ mode: "audio" });
     retained.voiceFrames = 0;
+    retained.asr = new AsrClient({
+      onStatus: (message) => updateResponse(message, "处理中"),
+      onText: retained.voiceTextHandler,
+      onError: (error) => updateResponse(`语音识别失败：${error.message}`, "异常"),
+      onFinished: () => updateResponse("语音识别完成", "完成"),
+    });
+    const asrStarted = retained.asr.start();
+    if (!asrStarted) {
+      retained.voiceSession.cancel();
+      retained.voiceSession = undefined;
+      retained.asr = undefined;
+      return;
+    }
     updateResponse("请说话，正在接收语音", "处理中");
   } catch (error) {
     updateResponse(`语音请求失败：${error.code || error.message}`, "异常");
@@ -221,15 +244,17 @@ function readVoiceEvents(updateResponse) {
   while ((event = session.takeEvent())) {
     if (event.type === "audio") {
       retained.voiceFrames += 1;
+      if (retained.asr) retained.asr.pushAudio(event.data);
     } else if (event.type === "state") {
       updateResponse(`语音状态：${event.state}`, "处理中");
     } else if (event.type === "end") {
       updateResponse(
         event.status === "completed"
-          ? `语音已接收（${retained.voiceFrames} 帧，未进行语音识别）`
+          ? `语音已接收（${retained.voiceFrames} 帧），正在完成识别`
           : `语音结束：${event.reason}`,
-        event.status === "completed" ? "完成" : "异常",
+        event.status === "completed" ? "处理中" : "异常",
       );
+      if (event.status === "completed" && retained.asr) retained.asr.finish();
       retained.voiceSession = undefined;
       retained.voiceFrames = 0;
     }
@@ -241,8 +266,11 @@ App.createApp((lifecycle) => {
   if (lifecycle === AppLifecycle.ON_DESTROY) {
     if (retained.inputTimer) clearInterval(retained.inputTimer);
     if (retained.voiceSession) retained.voiceSession.cancel();
+    if (retained.asr) retained.asr.close();
     retained.inputTimer = undefined;
     retained.voiceSession = undefined;
+    retained.asr = undefined;
+    retained.voiceTextHandler = undefined;
     retained.board = undefined;
     retained.root = undefined;
     retained.window = undefined;
