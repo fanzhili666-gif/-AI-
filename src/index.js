@@ -103,11 +103,12 @@ function start() {
         }
         return;
       }
-      entry.text += text[offset];
-      offset += 1;
+      const chunk = text.slice(offset, offset + 2);
+      entry.text += chunk;
+      offset += chunk.length;
       viewModel.response = entry.text;
       render();
-    }, 45);
+    }, 140);
   };
   const processDailyInput = (normalized, source, requestId) => {
     viewModel.source = source;
