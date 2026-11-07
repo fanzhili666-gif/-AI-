@@ -44,16 +44,21 @@ function parseIntent(input) {
   }
 
   const labeledCorrectionMatch = text.match(
-    /^(设备|现象|问题|负责人|截止时间|优先级|状态)不是(.+?)(?:是|应为|改为)(.+)$/,
+    /^(设备|现象|问题|负责人|截止时间|优先级|状态)(?:不是(.+?)[，,、]?(?:是|应为|改为)(.+)|(?:改成|调整为|变更为)(.+))$/,
   );
   if (labeledCorrectionMatch) {
+    const from = labeledCorrectionMatch[2]
+      ? labeledCorrectionMatch[2].replace(/[，,、。；;]\s*$/, "").trim()
+      : null;
+    const to = (labeledCorrectionMatch[3] || labeledCorrectionMatch[4] || "")
+      .replace(/[，,、。；;]\s*$/, "").trim();
     return {
       intent: INTENTS.CORRECT_ENTITY,
       text,
       slots: {
         field: FIELD_LABELS[labeledCorrectionMatch[1]],
-        from: labeledCorrectionMatch[2].replace(/[，,、。；;]\s*$/, "").trim(),
-        to: labeledCorrectionMatch[3].replace(/[，,、。；;]\s*$/, "").trim(),
+        from,
+        to,
       },
     };
   }

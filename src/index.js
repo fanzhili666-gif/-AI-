@@ -502,22 +502,20 @@ function start() {
     }));
     if (parsedIntent.intent === "correct_entity") {
       const { field, from, to } = parsedIntent.slots;
-      const currentValue = field ? conversation.entity[field] : undefined;
+      const currentItem = viewModel.items[0];
+      const currentValue = field
+        ? conversation.entity[field] || currentItem?.[field]
+        : undefined;
       const resolvedField = field || Object.keys(conversation.entity)
         .find((key) => conversation.entity[key] === from);
-      if (!resolvedField || (currentValue && currentValue !== from)) {
+      if (!resolvedField || !to || (from && currentValue && currentValue !== from)) {
         viewModel.state = "异常";
         viewModel.response = "无法确定要更正的字段，请说明字段名称";
       } else {
         conversation.entity[resolvedField] = to;
-        const entity = conversation.entity;
         const item = {
-          device: entity.device || "待提取",
-          issue: entity.issue || "待提取",
-          action: entity.issue || normalized,
-          owner: entity.owner || "待提取",
-          deadline: entity.deadline || "待提取",
-          priority: entity.priority || "待提取",
+          ...(currentItem || {}),
+          [resolvedField]: to,
           status: "处理中",
           data_source: "real",
           is_injected: false,
@@ -590,13 +588,16 @@ function start() {
           items.push(...viewModel.items.map((item) => ({ ...item, deadline })));
         }
       }
+      const nextItems = items.length || !viewModel.items.length ? items : viewModel.items;
       updateItems(
-        items,
+        nextItems,
         items.length
           ? `已自动提取 ${items.length} 条行动项`
           : source === "voice-asr"
             ? `语音转写完成，未识别到行动项：${normalized}`
-            : "未识别到行动项",
+            : viewModel.items.length
+              ? "未识别到新的行动项，已保留当前行动项"
+              : "未识别到行动项",
         "完成",
       );
       console.log(JSON.stringify({

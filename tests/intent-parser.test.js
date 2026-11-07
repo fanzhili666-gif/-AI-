@@ -13,6 +13,11 @@ const cases = [
     from: "李伟",
     to: "李娜",
   }],
+  ["负责人改成王强", INTENTS.CORRECT_ENTITY, {
+    field: "owner",
+    from: null,
+    to: "王强",
+  }],
   ["第二个行动项置顶", INTENTS.PRIORITIZE, { reference: "二", highlight: false }],
   ["第二个行动项", INTENTS.RESOLVE_REFERENCE, { ordinal: "二" }],
   ["确认执行", INTENTS.CONFIRMATION, { decision: "confirm" }],
