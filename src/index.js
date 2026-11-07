@@ -81,11 +81,20 @@ function start() {
     conversation.transcript.push({ role, text, requestId });
     conversation.transcript = conversation.transcript.slice(-12);
   };
-  const renderTranscript = () => conversation.transcript.length
-    ? conversation.transcript.map((entry) =>
-      `${entry.role === "user" ? "你" : "AI"}：${entry.text}`,
-    ).join("\n\n")
-    : "暂无对话记录";
+  const renderTranscript = () => {
+    if (!conversation.transcript.length) return "暂无对话记录";
+    const lines = [];
+    let length = 0;
+    for (const entry of conversation.transcript.slice(-8).reverse()) {
+      const text = String(entry.text || "").replace(/\s+/g, " ").trim();
+      const remaining = Math.max(0, 720 - length);
+      if (!remaining) break;
+      const preview = text.length > remaining ? `${text.slice(0, Math.max(0, remaining - 1))}…` : text;
+      lines.unshift(`${entry.role === "user" ? "你" : "AI"}：${preview}`);
+      length += preview.length;
+    }
+    return lines.join("\n\n");
+  };
   const animateAssistantResponse = (requestId, text) => {
     if (retained.typingTimer) clearInterval(retained.typingTimer);
     const entry = conversation.transcript.findLast((item) =>
@@ -217,7 +226,6 @@ function start() {
       `AI 日常助手\n\n` +
       `${renderStateLabels()}\n\n` +
       `当前状态：${viewModel.state}\n\n` +
-      `回复\n${viewModel.response}\n\n` +
       `对话记录\n${renderTranscript()}\n\n` +
       `语音输入已开启 · 可直接说话`,
     );
