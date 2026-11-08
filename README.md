@@ -2,6 +2,8 @@
 
 [中文](README.zh-CN.md) | English
 
+智丽 AI 助手运行于 IrisView 平台，支持语音和文字输入，用户可在同一对话中追问、补充或纠正信息。应用可处理日常记录与提醒，并支持历史对话浏览；语音识别和 AI 对话由 Qwen 服务提供。界面通过待命、处理中、待确认、完成和异常等状态反馈交互进度。
+
 ZhiLi AI Assistant is an IrisView AI daily assistant with text and voice conversation, local notes, to-dos, reminders, schedules, and persistent conversation history browsable from the UI (up to 50 conversations with 200 messages each).
 
 This project uses the IrisView application scaffold. Keep packaged resources under `src/`. Store application-owned persistent files under the private directory provided by `FUSIONUI_APP_DATA_DIR`; never build a path from the Client installation directory or a user home directory.
