@@ -1,0 +1,11 @@
+run_id,app_version_code,device_or_simulator,network,request,submitted_at,full_response_visible_at,latency_seconds,result,evidence_id,notes
+P01,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:00.00,00:03.39,3.39,SUCCESS,E-P01-01,第 1 次；以秒表累计读数 00:00.00 至 00:03.39 计算
+P02,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:03.39,00:05.02,1.63,SUCCESS,E-P01-01,第 2 次；以秒表累计读数差计算
+P03,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:05.02,00:08.15,3.13,SUCCESS,E-P01-01,第 3 次；以秒表累计读数差计算
+P04,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:08.15,00:10.58,2.43,SUCCESS,E-P01-01,第 4 次；以秒表累计读数差计算
+P05,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:10.58,00:12.33,1.75,SUCCESS,E-P01-01,第 5 次；以秒表累计读数差计算
+P06,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:12.33,00:15.71,3.38,SUCCESS,E-P01-01,第 6 次；以秒表累计读数差计算
+P07,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:15.71,00:18.00,2.29,SUCCESS,E-P01-01,第 7 次；以秒表累计读数差计算
+P08,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:18.00,00:19.82,1.82,SUCCESS,E-P01-01,第 8 次；以秒表累计读数差计算
+P09,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:19.82,00:22.84,3.02,SUCCESS,E-P01-01,第 9 次；以秒表累计读数差计算
+P10,119,LLVISION Agent Platform Mono,unspecified,"请用一句话介绍你能做什么",00:22.84,00:36.89,14.05,SUCCESS,E-P01-01,第 10 次；以秒表累计读数差计算

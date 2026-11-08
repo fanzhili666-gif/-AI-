@@ -1,14 +1,14 @@
 {
-  "capabilities": ["input.audio", "input.text"],
+  "capabilities": ["input.audio", "input.navigation", "input.text"],
   "controlProfile": "generic",
   "displayName": {
-    "en": "My First App",
-    "zh-CN": "我的第一个应用"
+    "en": "ZhiLi AI Assistant",
+    "zh-CN": "智丽AI助手"
   },
   "id": "example.myfirstapp",
   "minimumHostVersion": 2,
   "role": "ordinary",
   "schemaVersion": 1,
   "version": "1.0.0",
-  "versionCode": 58
+  "versionCode": 119
 }

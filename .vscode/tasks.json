@@ -1,0 +1,63 @@
+    {
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "IrisView: Build",
+      "type": "shell",
+      "command": "/home/ubuntu_user/IrisView/Developer-Kit/bin/irisview",
+      "args": ["build", "${workspaceFolder}"],
+      "problemMatcher": []
+    },
+    {
+      "label": "IrisView: Package",
+      "type": "shell",
+      "command": "/home/ubuntu_user/IrisView/Developer-Kit/bin/irisview",
+      "args": [
+        "package",
+        "${workspaceFolder}",
+        "--debug-unsigned",
+        "--output",
+        "${userHome}/IrisView-Developer-Kit-Data/my-first-app.fuiapp"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "IrisView: Verify",
+      "type": "shell",
+      "command": "/home/ubuntu_user/IrisView/Developer-Kit/bin/irisview",
+      "args": [
+        "verify",
+        "${userHome}/IrisView-Developer-Kit-Data/my-first-app.fuiapp",
+        "--allow-debug-unsigned"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "✨ IrisView: 一键构建打包并验证",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "IrisView: Build",
+        "IrisView: Package",
+        "IrisView: Verify"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+        {
+      "label": "IrisView: Run",
+      "type": "shell",
+      "command": "/home/ubuntu_user/IrisView/Developer-Kit/bin/irisview",
+      "args": [
+        "run",
+        "${userHome}/IrisView-Developer-Kit-Data/my-first-app.fuiapp",
+        "--allow-debug-unsigned",
+        "--display-mode",
+        "mono"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

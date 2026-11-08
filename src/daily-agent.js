@@ -66,6 +66,11 @@ function formatList(title, values) {
   return `${title}：\n${values.map((entry, index) => `${index + 1}. ${entry.text}`).join("\n")}`;
 }
 
+function requiresWebSearch(text) {
+  return /联网|上网|搜索|搜一下|查一下|查询(?:一下)?|帮我查|天气|新闻|最新|实时|目前|当前|现在|股价|股票|汇率|油价|路况|航班|比分|赛况|开放时间|营业时间|价格|多少钱|近况|现状|发生了什么|今日|明天|本周|本月|today|latest|current|weather|news|price|stock|exchange rate|traffic|flight/i
+    .test(String(text || ""));
+}
+
 function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
   const store = createStore(filePath);
   const runCommand = (data, command) => {
@@ -97,7 +102,7 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
     throw new Error(`未知日常命令：${command.type}`);
   };
   return {
-    async handle({ history = [], text }) {
+    async handle({ history = [], text, signal }) {
       const command = findCommand(text);
       if (command) {
         const data = store.load();
@@ -110,8 +115,10 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
           role: "system",
           content: [
             "你是中文日常生活 AI 助手，支持聊天、备忘、待办、提醒、日程、天气和联网搜索问答。",
+            "涉及天气、新闻、价格、营业时间、交通、航班、赛事或其他随时间变化的信息时，必须使用联网搜索获取当前资料。",
+            "用户明确要求联网、搜索、查询或查最新资料时，必须使用联网搜索；不要仅凭模型已有知识回答。",
+            "只根据搜索结果作答；搜索无结果或不可用时，明确说明未能查到，不得编造。",
             "只返回 JSON：{response:string,intent:string}。",
-            "不要编造实时天气、搜索结果或已执行的外部操作；无法联网时明确说明。",
           ].join("\n"),
         },
         ...history.slice(-8).filter((entry) => entry?.role && entry?.text)
@@ -121,8 +128,12 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
       const raw = await requestJson({
         messages,
         enableSearch: true,
-        searchOptions: { enable_search_extension: true },
+        searchOptions: {
+          enable_search_extension: true,
+          ...(requiresWebSearch(text) ? { forced_search: true } : {}),
+        },
         timeoutMs: 45000,
+        signal,
       });
       if (!raw || typeof raw.response !== "string") {
         throw new Error("日常智能体响应缺少 response");
@@ -132,4 +143,10 @@ function createDailyAgent({ filePath, requestJson = requestStructuredJson }) {
   };
 }
 
-module.exports = { EMPTY_DATA, createDailyAgent, createStore, findCommand };
+module.exports = {
+  EMPTY_DATA,
+  createDailyAgent,
+  createStore,
+  findCommand,
+  requiresWebSearch,
+};

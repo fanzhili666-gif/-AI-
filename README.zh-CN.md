@@ -1,6 +1,8 @@
-# My First App
+# 智丽 AI 助手
 
 中文 | [English](README.md)
+
+本应用是运行于 IrisView 的智丽 AI 助手，支持文字和语音对话、本地备忘/待办/提醒/日程管理，以及可通过界面菜单浏览的持久对话历史（最多 50 段，每段 200 条消息）。
 
 本项目使用 IrisView 应用脚手架。随包资源放在 `src/`。应用持久文件存于 `FUSIONUI_APP_DATA_DIR` 提供的私有目录，不从 Client 安装目录或用户 Home 推导路径。
 

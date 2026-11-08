@@ -126,7 +126,9 @@ class WebSocketClient extends EventEmitter {
   }
 
   close() {
-    if (this.socket) this.socket.end();
+    if (!this.socket || this.readyState === 3) return;
+    if (this.readyState === WebSocketClient.OPEN) this.writeFrame(8, Buffer.alloc(0));
+    this.socket.end();
   }
 }
 

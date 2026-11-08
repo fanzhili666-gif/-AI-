@@ -22,6 +22,12 @@ async function main() {
   });
   assert.equal(searchRequest.enable_search, true);
   assert.equal(searchRequest.search_options.enable_search_extension, true);
+  const forcedSearchRequest = buildStructuredRequest({
+    messages: [{ role: "user", content: "北京明天的天气" }],
+    enableSearch: true,
+    searchOptions: { enable_search_extension: true, forced_search: true },
+  });
+  assert.equal(forcedSearchRequest.search_options.forced_search, true);
   assert.equal(AI_BASE_URL, "https://maas.qianwenaiapi.com/compatible-mode/v1");
 
   assert.deepEqual(
@@ -50,11 +56,13 @@ async function main() {
   await requestStructuredJson({
     apiKey: "test-key",
     enableSearch: true,
+    searchOptions: { enable_search_extension: true, forced_search: true },
     messages: [{ role: "user", content: "今天北京天气" }],
     fetchImpl: async (_url, options) => {
       const body = JSON.parse(options.body);
       assert.equal(body.enable_search, true);
       assert.equal(body.search_options.enable_search_extension, true);
+      assert.equal(body.search_options.forced_search, true);
       return {
         ok: true,
         status: 200,
@@ -71,7 +79,21 @@ async function main() {
     /DASHSCOPE_API_KEY 未配置/,
   );
 
-  console.log("ai-client: 6 cases passed");
+  const abortController = new AbortController();
+  const abortingRequest = requestStructuredJson({
+    apiKey: "test-key",
+    messages: [{ role: "user", content: "取消请求" }],
+    signal: abortController.signal,
+    fetchImpl: (_url, { signal }) => new Promise((_resolve, reject) => {
+      signal.addEventListener("abort", () => {
+        reject(Object.assign(new Error("aborted"), { name: "AbortError" }));
+      }, { once: true });
+    }),
+  });
+  abortController.abort();
+  await assert.rejects(abortingRequest, /AI 请求已取消/);
+
+  console.log("ai-client: 7 cases passed");
 }
 
 main().catch((error) => {

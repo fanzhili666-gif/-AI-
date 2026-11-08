@@ -1,6 +1,8 @@
-# My First App
+# ZhiLi AI Assistant
 
 [中文](README.zh-CN.md) | English
+
+ZhiLi AI Assistant is an IrisView AI daily assistant with text and voice conversation, local notes, to-dos, reminders, schedules, and persistent conversation history browsable from the UI (up to 50 conversations with 200 messages each).
 
 This project uses the IrisView application scaffold. Keep packaged resources under `src/`. Store application-owned persistent files under the private directory provided by `FUSIONUI_APP_DATA_DIR`; never build a path from the Client installation directory or a user home directory.
 

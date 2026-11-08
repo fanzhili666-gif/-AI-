@@ -5,31 +5,47 @@ const WebSocket = require("./websocket-client");
 
 const ASR_URL = "wss://maas.qianwenaiapi.com/api-ws/v1/inference";
 const ASR_MODEL = "qwen-audio-3.1-asr-flash-message";
+const CONNECT_TIMEOUT_MS = 15000;
+const FINISH_TIMEOUT_MS = 20000;
 
 class AsrClient {
-  constructor({ onStatus, onText, onError, onFinished }) {
+  constructor({
+    onStatus,
+    onText,
+    onError,
+    onFinished,
+    apiKey = process.env.DASHSCOPE_API_KEY,
+    WebSocketImpl = WebSocket,
+    connectTimeoutMs = CONNECT_TIMEOUT_MS,
+    finishTimeoutMs = FINISH_TIMEOUT_MS,
+  }) {
     this.onStatus = onStatus;
     this.onText = onText;
     this.onError = onError;
     this.onFinished = onFinished;
+    this.apiKey = apiKey;
+    this.WebSocketImpl = WebSocketImpl;
+    this.connectTimeoutMs = connectTimeoutMs;
+    this.finishTimeoutMs = finishTimeoutMs;
     this.taskId = crypto.randomUUID();
     this.started = false;
     this.finished = false;
     this.finishRequested = false;
+    this.timeout = undefined;
     this.pendingFrames = [];
     this.sentences = new Map();
     this.socket = undefined;
   }
 
   start() {
-    const apiKey = process.env.DASHSCOPE_API_KEY;
-    if (!apiKey) {
+    if (!this.apiKey) {
       this.fail(new Error("DASHSCOPE_API_KEY 未配置"));
       return false;
     }
 
+    const apiKey = this.apiKey;
     this.onStatus("正在连接语音识别服务");
-    this.socket = new WebSocket(ASR_URL, {
+    this.socket = new this.WebSocketImpl(ASR_URL, {
       headers: { Authorization: `Bearer ${apiKey}` },
     });
     this.socket.on("open", () => this.sendRunTask());
@@ -40,7 +56,18 @@ class AsrClient {
         this.fail(new Error("语音识别连接已关闭"));
       }
     });
+    this.setTimeout(this.connectTimeoutMs, "语音识别连接超时");
     return true;
+  }
+
+  setTimeout(delay, message) {
+    this.clearTimeout();
+    this.timeout = setTimeout(() => this.fail(new Error(message)), delay);
+  }
+
+  clearTimeout() {
+    clearTimeout(this.timeout);
+    this.timeout = undefined;
   }
 
   sendRunTask() {
@@ -80,11 +107,12 @@ class AsrClient {
   finish() {
     if (this.finished || this.finishRequested) return;
     this.finishRequested = true;
-    this.sendFinishTask();
+    if (this.started) this.sendFinishTask();
   }
 
   sendFinishTask() {
     if (!this.started || this.finished) return;
+    this.setTimeout(this.finishTimeoutMs, "语音识别结果等待超时");
     this.send({
       header: {
         action: "finish-task",
@@ -97,7 +125,8 @@ class AsrClient {
 
   close() {
     this.finished = true;
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) this.socket.close();
+    this.clearTimeout();
+    if (this.socket) this.socket.close();
   }
 
   send(message) {
@@ -117,6 +146,7 @@ class AsrClient {
     const event = message.header && message.header.event;
     if (event === "task-started") {
       this.started = true;
+      this.clearTimeout();
       this.onStatus("语音识别已连接，请说话");
       for (const frame of this.pendingFrames) this.socket.send(frame);
       this.pendingFrames = [];
@@ -133,6 +163,7 @@ class AsrClient {
     }
     if (event === "task-finished") {
       this.finished = true;
+      this.clearTimeout();
       this.onFinished();
       this.socket.close();
       return;
@@ -146,6 +177,7 @@ class AsrClient {
   fail(error) {
     if (this.finished) return;
     this.finished = true;
+    this.clearTimeout();
     if (this.socket) this.socket.close();
     this.onError(error);
   }

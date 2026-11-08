@@ -41,6 +41,7 @@ async function requestStructuredJson({
   timeoutMs = 20000,
   enableSearch = false,
   searchOptions,
+  signal,
 }) {
   if (!apiKey) throw new Error("DASHSCOPE_API_KEY 未配置");
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -48,8 +49,16 @@ async function requestStructuredJson({
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  let timedOut = false;
+  const timeout = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+  const abortRequest = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", abortRequest, { once: true });
   try {
+    if (signal?.aborted) throw new Error("AI 请求已取消");
     const response = await fetchImpl(`${AI_BASE_URL}/chat/completions`, {
       method: "POST",
       headers: {
@@ -70,10 +79,16 @@ async function requestStructuredJson({
     }
     return readStructuredContent(body);
   } catch (error) {
-    if (error.name === "AbortError") throw new Error(`AI 请求超时（${timeoutMs}ms）`);
+    if (error.name === "AbortError" && timedOut) {
+      throw new Error(`AI 请求超时（${timeoutMs}ms）`);
+    }
+    if (error.name === "AbortError" && signal?.aborted) {
+      throw new Error("AI 请求已取消");
+    }
     throw error;
   } finally {
     clearTimeout(timeout);
+    signal?.removeEventListener("abort", abortRequest);
   }
 }
 

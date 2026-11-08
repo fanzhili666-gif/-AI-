@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>智丽 AI 助手 | 作品说明</title>
+  <style>
+    @page { size: A4; margin: 15mm 16mm; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: #17251d;
+      font: 10pt/1.48 "Noto Sans CJK SC", "WenQuanYi Zen Hei", sans-serif;
+      background: #e8eee9;
+    }
+    .page {
+      position: relative;
+      width: 178mm;
+      min-height: 267mm;
+      margin: 10mm auto;
+      padding: 3mm 1mm 12mm;
+      background: #fff;
+      page-break-after: always;
+    }
+    .page:last-child { page-break-after: auto; }
+    h1 { margin: 0; font-size: 25pt; line-height: 1.15; color: #14532d; }
+    h2 { margin: 5mm 0 1.5mm; font-size: 13pt; color: #166534; }
+    p { margin: 1.5mm 0; }
+    .subtitle { margin-top: 2mm; color: #52705c; font-size: 11pt; }
+    .tagline {
+      margin: 6mm 0;
+      padding: 4mm 5mm;
+      color: #effcf3;
+      background: #14532d;
+      font-size: 13pt;
+      border-radius: 2mm;
+    }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm; }
+    .card {
+      padding: 3mm;
+      border: .3mm solid #d5e4d8;
+      border-radius: 2mm;
+      background: #f7fbf8;
+    }
+    .card strong { color: #14532d; }
+    ul { margin: 1mm 0 1mm 5mm; padding-left: 4mm; }
+    li { margin: 1mm 0; }
+    .small { color: #516158; font-size: 8.5pt; }
+    .pending {
+      padding: 2.5mm 3mm;
+      border-left: 1mm solid #d97706;
+      background: #fff8e9;
+    }
+    .footer {
+      position: absolute;
+      right: 1mm;
+      bottom: 1mm;
+      left: 1mm;
+      display: flex;
+      justify-content: space-between;
+      padding-top: 2mm;
+      border-top: .3mm solid #d8e2da;
+      color: #718078;
+      font-size: 8pt;
+    }
+    @media screen {
+      .page { box-shadow: 0 2mm 8mm #10271822; }
+    }
+    @media print {
+      body { background: #fff; }
+      .page { width: auto; min-height: 267mm; margin: 0; padding: 0 0 10mm; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="page">
+    <h1>智丽 AI 助手</h1>
+    <div class="subtitle">ZhiLi AI Assistant · HackJunction 作品说明</div>
+    <div class="tagline">让语音与文字自然衔接，帮助用户记录、查询和处理日常事务。</div>
+
+    <h2>作品简介</h2>
+    <p>智丽 AI 助手是运行于 IrisView ARUI 的日常生活助手。用户可通过语音或文字发起请求，并在同一段对话中追问、补充或纠正信息。应用提供本地备忘、待办、提醒和日程管理，并支持浏览持久化的历史对话，减少日常记录和查询时的操作切换。</p>
+
+    <h2>交互流程</h2>
+    <div class="grid">
+      <div class="card"><strong>语音输入</strong><br>设备采集音频 → Qwen Audio 语音识别 → 识别文本进入助手处理 → 对话界面显示结果。</div>
+      <div class="card"><strong>文字输入</strong><br>用户提交文字 → 本地命令处理或 Qwen 大语言模型 → 结果写入对话并更新界面状态。</div>
+      <div class="card"><strong>跨方式纠正</strong><br>语音和文字进入同一对话；用户可用后续文字补充或纠正前一条请求。</div>
+      <div class="card"><strong>历史浏览</strong><br>会话记录存于应用私有目录；最多 50 段、每段 200 条消息，用户可选择并返回会话。</div>
+    </div>
+
+    <h2>功能与状态</h2>
+    <p>明确的备忘、待办、提醒和日程指令由本地逻辑处理并保存；普通聊天及需要模型处理的问题发送到大语言模型。界面状态包括 <strong>待命、处理中、待确认、完成、异常</strong>，异常时提供反馈并支持继续操作。</p>
+
+    <h2>技术实现</h2>
+    <ul>
+      <li><strong>平台：</strong>IrisView Developer Kit / FusionUI，窗口式 ARUI 应用。</li>
+      <li><strong>模型：</strong>Qwen `qwen3.8-flash`；语音识别为 Qwen Audio `qwen-audio-3.1-asr-flash-message`。</li>
+      <li><strong>数据：</strong>使用平台提供的应用私有数据目录；API Key 通过环境变量配置，不包含在作品包中。</li>
+      <li><strong>运行包：</strong>应用 ID `example.myfirstapp`，版本 `1.0.0`，候选版本码 `119`。</li>
+    </ul>
+
+    <h2>参赛者与贡献</h2>
+    <p>个人参赛者：<strong>范智丽</strong>。需求整理、交互设计、应用实现、测试和提交材料由范智丽负责。开发过程中使用 AI 辅助编程；运行时使用 Qwen 大语言模型和语音识别服务。</p>
+
+    <div class="footer"><span>候选稿：功能验收与延迟数据已记录</span><span>1 / 2</span></div>
+  </section>
+
+  <section class="page">
+    <h1 style="font-size:20pt">验收、性能与声明</h1>
+    <div class="subtitle">候选包 versionCode 119 · 验收与性能数据据实测记录</div>
+
+    <h2>八项验收摘要</h2>
+    <div class="grid">
+      <div class="card"><strong>T01–T02</strong><br>启动与状态；文字对话和连续追问。</div>
+      <div class="card"><strong>T03–T04</strong><br>语音输入；语音后用文字纠正或补充。</div>
+      <div class="card"><strong>T05–T06</strong><br>信息处理与重启持久化；连续两次界面更新。</div>
+      <div class="card"><strong>T07–T08</strong><br>五种状态；历史选择、导航和异常恢复。</div>
+    </div>
+    <p class="small">逐项结果和证据编号见 `ACCEPTANCE-RESULTS.csv` 与 `EVIDENCE-INDEX.md`。T01–T08 均已通过。T05 重启后复查由参赛者确认，截图未单独呈现重启过程。T07 的待确认、异常及恢复由参赛者确认观察，截图仅记录另外三种状态。</p>
+
+    <h2>性能测量</h2>
+    <p>参赛者使用秒表连续测量同一模拟器、同一请求 10 次，均报告成功。各次耗时按相邻累计秒表读数之差计算；提交动作的独立时间戳和网络环境未记录，因此结果为人工计时。</p>
+    <div class="pending"><strong>结果：</strong>平均 3.69 秒；中位数 2.73 秒；最小 1.63 秒；最大 14.05 秒；失败 0 / 10 次。原始累计读数及逐次差值见 `LATENCY-10-RUNS.csv`。赛事未提供量化阈值，不作未验证的达标声明。</div>
+
+    <h2>提交与复现</h2>
+    <ul>
+      <li>源码、依赖、启动和构建步骤随项目提交；本地运行需配置 `DASHSCOPE_API_KEY`，密钥不提交。</li>
+      <li>使用赛事指定账号登录 `hackjunction.app` 上传原型及相关材料；评审以赛事指定模拟器运行结果为主要依据，并综合作品材料、演示和问答评分。</li>
+      <li>最终冻结时记录应用版本码、包 SHA-256、模拟器版本和复现步骤；候选包修改后重新构建、验证及更新证据。</li>
+    </ul>
+
+    <h2>数据、素材与已知事项</h2>
+    <p>本地保存用户对话及备忘、待办、提醒、日程；语音和文本请求会发送至配置的外部 AI 服务。验收使用虚构测试数据。Qwen 服务及模型归其权利人所有。</p>
+    <div class="pending"><strong>备注：</strong>启动图由参赛者制作；参赛者确认无其他第三方素材，并已核实 Qwen 服务条款及验收数据发送许可。</div>
+
+    <h2>证据索引</h2>
+    <p>截图、日志、录屏编号见 `EVIDENCE-INDEX.md`；演示视频 `模拟器演示视频-智丽AI助手-范智丽.mp4`（实测时长 113.453 秒）；本说明 PDF 不超过 2 页。</p>
+
+    <div class="footer"><span>本页须依据最终验收记录及冻结包更新</span><span>2 / 2</span></div>
+  </section>
+</body>
+</html>
